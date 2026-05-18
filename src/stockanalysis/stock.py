@@ -14,7 +14,7 @@ from stockanalysis.data.history import History
 from stockanalysis.data.metrics import Metrics
 from stockanalysis.data.overview import fetch_overview
 from stockanalysis.data.statistics import Statistics
-from stockanalysis.data.transcripts import fetch_transcripts
+from stockanalysis.data.transcripts import fetch_transcript, fetch_transcripts
 
 Period = Literal["annual", "quarterly"]
 
@@ -57,6 +57,7 @@ class Stock:
         stock.statistics()
         stock.overview()
         stock.transcripts()
+        stock.transcript(12345)
     """
 
     def __init__(self, symbol: str) -> None:
@@ -86,6 +87,10 @@ class Stock:
     def transcripts(self) -> pd.DataFrame:
         """Earnings call transcript list with date, quarter, summary, and audio URL."""
         return fetch_transcripts(self.symbol)
+
+    def transcript(self, transcript_id: int | str) -> dict:
+        """Full text and Q&A for a single earnings call transcript by ID."""
+        return fetch_transcript(self.symbol, transcript_id)
 
     def __repr__(self) -> str:
         return f"Stock('{self.symbol}')"

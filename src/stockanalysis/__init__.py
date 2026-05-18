@@ -1,3 +1,4 @@
+from stockanalysis.core.http import clear_cache
 from stockanalysis.stock import Stock
 
 
@@ -12,8 +13,12 @@ def stock(symbol: str) -> Stock:
         aapl.financials.income_statement()
         aapl.financials.balance_sheet(period="quarterly")
         aapl.ratios()
+        aapl.transcripts()
+        aapl.transcript(12345)
+
+        sa.clear_cache()  # flush in-session HTTP cache
     """
     return Stock(symbol)
 
 
-__all__ = ["stock", "Stock"]
+__all__ = ["stock", "Stock", "clear_cache"]

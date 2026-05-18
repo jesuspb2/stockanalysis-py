@@ -6,14 +6,26 @@ from stockanalysis.core.session import get_session
 
 BASE = "https://stockanalysis.com"
 
+_cache: dict[tuple, list] = {}
+
 
 def fetch_data_json(path: str, params: dict | None = None, timeout: int = 15) -> list:
     """Fetch a SvelteKit __data.json endpoint and return the node_data array."""
+    key = (path, tuple(sorted((params or {}).items())))
+    if key in _cache:
+        return _cache[key]
     url = f"{BASE}{path}/__data.json"
     headers = {"Referer": f"{BASE}{path}/"}
     resp = get_session().get(url, params=params or {}, headers=headers, timeout=timeout)
     resp.raise_for_status()
-    return resp.json()["nodes"][2]["data"]
+    data = resp.json()["nodes"][2]["data"]
+    _cache[key] = data
+    return data
+
+
+def clear_cache() -> None:
+    """Clear the in-memory HTTP response cache."""
+    _cache.clear()
 
 
 def resolve(val: object, d: list) -> object:
