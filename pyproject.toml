@@ -24,6 +24,14 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/stockanalysis"]
 
+[tool.mypy]
+python_version = "3.10"
+strict = false
+
+[[tool.mypy.overrides]]
+module = ["pandas.*", "playwright.*"]
+ignore_missing_imports = true
+
 [dependency-groups]
 dev = [
     "mypy>=2.1.0",

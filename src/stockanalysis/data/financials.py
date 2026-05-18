@@ -4,7 +4,11 @@ from typing import Literal
 
 import pandas as pd
 
-from stockanalysis.core.http import fetch_data_json, extract_financial_df, extract_metrics_df
+from stockanalysis.core.http import (
+    fetch_data_json,
+    extract_financial_df,
+    extract_metrics_df,
+)
 
 Period = Literal["annual", "quarterly"]
 

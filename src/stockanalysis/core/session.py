@@ -6,7 +6,9 @@ from pathlib import Path
 
 import httpx
 
-_REPO_ROOT = Path(__file__).parent.parent.parent.parent  # core/ -> stockanalysis/ -> src/ -> repo root
+_REPO_ROOT = Path(
+    __file__
+).parent.parent.parent.parent  # core/ -> stockanalysis/ -> src/ -> repo root
 STATE_PATH = _REPO_ROOT / ".auth" / "state.json"
 
 _DEFAULT_HEADERS = {
@@ -34,4 +36,6 @@ def _build_session() -> httpx.Client:
         for cookie in state.get("cookies", []):
             cookies[cookie["name"]] = cookie["value"]
 
-    return httpx.Client(headers=_DEFAULT_HEADERS, cookies=cookies, follow_redirects=True)
+    return httpx.Client(
+        headers=_DEFAULT_HEADERS, cookies=cookies, follow_redirects=True
+    )

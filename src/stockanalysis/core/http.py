@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pandas as pd
 
 from stockanalysis.core.session import get_session
@@ -28,7 +30,7 @@ def clear_cache() -> None:
     _cache.clear()
 
 
-def resolve(val: object, d: list) -> object:
+def resolve(val: Any, d: list) -> Any:
     """Recursively resolve SvelteKit deduplicated index references."""
     if isinstance(val, int) and 0 <= val < len(d):
         v = d[val]

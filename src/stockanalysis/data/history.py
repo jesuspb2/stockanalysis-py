@@ -31,9 +31,17 @@ class History:
             return pd.DataFrame()
 
         df = pd.DataFrame(rows)
-        df = df.rename(columns={"t": "date", "o": "open", "h": "high",
-                                  "l": "low", "c": "close", "v": "volume",
-                                  "ch": "change"})
+        df = df.rename(
+            columns={
+                "t": "date",
+                "o": "open",
+                "h": "high",
+                "l": "low",
+                "c": "close",
+                "v": "volume",
+                "ch": "change",
+            }
+        )
         df = df.set_index("date")
         df.index.name = "date"
         return df

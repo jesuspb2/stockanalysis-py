@@ -34,7 +34,9 @@ class Dividend:
             return pd.DataFrame()
 
         df = pd.DataFrame(rows)
-        date_col = next((c for c in ("exDate", "ex_date", "date") if c in df.columns), None)
+        date_col = next(
+            (c for c in ("exDate", "ex_date", "date") if c in df.columns), None
+        )
         if date_col:
             df = df.set_index(date_col)
             df.index.name = "ex_date"

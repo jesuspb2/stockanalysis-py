@@ -5,10 +5,24 @@ import pandas as pd
 from stockanalysis.core.http import fetch_data_json, resolve
 
 _SECTIONS = [
-    "valuation", "shares", "ratios", "evRatios", "financialPosition",
-    "financialEfficiency", "taxes", "stockPrice", "shortSelling",
-    "incomeStatement", "balanceSheet", "cashFlow", "margins",
-    "dividends", "analystForecasts", "stockSplits", "scores", "fairValue",
+    "valuation",
+    "shares",
+    "ratios",
+    "evRatios",
+    "financialPosition",
+    "financialEfficiency",
+    "taxes",
+    "stockPrice",
+    "shortSelling",
+    "incomeStatement",
+    "balanceSheet",
+    "cashFlow",
+    "margins",
+    "dividends",
+    "analystForecasts",
+    "stockSplits",
+    "scores",
+    "fairValue",
 ]
 
 
@@ -49,10 +63,12 @@ class Statistics:
             if isinstance(items, list):
                 for item in items:
                     if isinstance(item, dict):
-                        rows.append({
-                            "section": section,
-                            "id": item.get("id"),
-                            "title": item.get("title"),
-                            "value": item.get("value"),
-                        })
+                        rows.append(
+                            {
+                                "section": section,
+                                "id": item.get("id"),
+                                "title": item.get("title"),
+                                "value": item.get("value"),
+                            }
+                        )
         return pd.DataFrame(rows)
