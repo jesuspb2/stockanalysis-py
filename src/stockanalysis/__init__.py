@@ -1,4 +1,6 @@
 from stockanalysis.core.http import clear_cache
+from stockanalysis.data.search import screener, search
+from stockanalysis.etf import ETF
 from stockanalysis.stock import Stock
 
 
@@ -21,4 +23,22 @@ def stock(symbol: str) -> Stock:
     return Stock(symbol)
 
 
-__all__ = ["stock", "Stock", "clear_cache"]
+def etf(symbol: str) -> ETF:
+    """
+    Create an ETF object for the given ticker symbol.
+
+    Usage:
+        import stockanalysis as sa
+
+        spy = sa.etf("SPY")
+        spy.overview()
+        spy.holdings()
+        spy.holdings(top=10)
+        spy.sectors()
+        spy.performance()
+        spy.history.prices()
+    """
+    return ETF(symbol)
+
+
+__all__ = ["stock", "Stock", "etf", "ETF", "search", "screener", "clear_cache"]
