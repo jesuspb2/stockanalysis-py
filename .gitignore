@@ -1,0 +1,12 @@
+.DS_Store
+.env
+.auth/
+.venv/
+__pycache__/
+*.pyc
+dist/
+*.egg-info/
+.pytest_cache/
+
+.playwright-cli
+*plan.md

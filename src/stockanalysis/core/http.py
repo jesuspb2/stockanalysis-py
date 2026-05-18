@@ -1,0 +1,59 @@
+from __future__ import annotations
+
+import pandas as pd
+
+from stockanalysis.core.session import get_session
+
+BASE = "https://stockanalysis.com"
+
+
+def fetch_data_json(path: str, params: dict | None = None, timeout: int = 15) -> list:
+    """Fetch a SvelteKit __data.json endpoint and return the node_data array."""
+    url = f"{BASE}{path}/__data.json"
+    headers = {"Referer": f"{BASE}{path}/"}
+    resp = get_session().get(url, params=params or {}, headers=headers, timeout=timeout)
+    resp.raise_for_status()
+    return resp.json()["nodes"][2]["data"]
+
+
+def resolve(val: object, d: list) -> object:
+    """Recursively resolve SvelteKit deduplicated index references."""
+    if isinstance(val, int) and 0 <= val < len(d):
+        v = d[val]
+        if isinstance(v, dict):
+            return {k: resolve(vv, d) for k, vv in v.items()}
+        if isinstance(v, list):
+            return [resolve(x, d) for x in v]
+        return v
+    return val
+
+
+def resolve_meta(node_data: list) -> dict:
+    """Resolve every key in the top-level meta dict."""
+    meta = node_data[0]
+    return {k: resolve(v, node_data) for k, v in meta.items()}
+
+
+def extract_financial_df(node_data: list, key: str = "financialData") -> pd.DataFrame:
+    """Extract a financial DataFrame from node_data using SvelteKit dedup encoding."""
+    meta = node_data[0]
+    fd_refs = node_data[meta[key]]
+    resolved = {k: resolve(v, node_data) for k, v in fd_refs.items()}
+    dates = resolved.pop("datekey", [])
+    df = pd.DataFrame(resolved, index=dates)
+    df.index.name = "period"
+    return df
+
+
+def extract_metrics_df(node_data: list) -> pd.DataFrame:
+    """Extract financials/metrics page into a flat DataFrame (all categories merged)."""
+    meta = node_data[0]
+    fd = resolve(meta["financialData"], node_data)
+    dates = fd["datekey"]
+    columns: dict[str, list] = {}
+    for metrics in fd["categories"].values():
+        for metric_id, values in metrics.items():
+            columns[metric_id] = values
+    df = pd.DataFrame(columns, index=dates)
+    df.index.name = "period"
+    return df
