@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
 
 import httpx
@@ -14,12 +15,15 @@ _DEFAULT_HEADERS = {
 }
 
 _session: httpx.Client | None = None
+_session_lock = threading.Lock()
 
 
 def get_session() -> httpx.Client:
     global _session
     if _session is None:
-        _session = _build_session()
+        with _session_lock:
+            if _session is None:
+                _session = _build_session()
     return _session
 
 

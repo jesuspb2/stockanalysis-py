@@ -25,4 +25,9 @@ build-backend = "hatchling.build"
 packages = ["src/stockanalysis"]
 
 [dependency-groups]
-dev = ["pytest", "pytest-cov"]
+dev = [
+    "mypy>=2.1.0",
+    "pytest",
+    "pytest-cov",
+    "ruff>=0.15.13",
+]
