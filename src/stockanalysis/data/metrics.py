@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 import pandas as pd
 
@@ -9,15 +9,15 @@ from stockanalysis.core.http import fetch_data_json, resolve
 Period = Literal["quarterly", "trailing"]
 
 
-def _segment_df(node_data: list, period: Period = "quarterly") -> pd.DataFrame:
+def _segment_df(node_data: list[Any], period: Period = "quarterly") -> pd.DataFrame:
     """Parse a segment-breakdown metrics endpoint into a pivoted DataFrame."""
     meta = node_data[0]
     data_top = resolve(meta["data"], node_data)
-    segments: list[dict] = data_top["data"][period]
+    segments: list[dict[str, Any]] = data_top["data"][period]
     return _series_list_to_df(segments)
 
 
-def _series_list_to_df(segments: list[dict]) -> pd.DataFrame:
+def _series_list_to_df(segments: list[dict[str, Any]]) -> pd.DataFrame:
     rows: dict[str, dict[str, float | None]] = {}
     for seg in segments:
         name = seg["name"]

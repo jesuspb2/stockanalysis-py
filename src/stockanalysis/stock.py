@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 import pandas as pd
 
@@ -80,7 +80,7 @@ class Stock:
         """All valuation and key stats as a flat DataFrame (section, id, title, value)."""
         return Statistics(self.symbol).to_dataframe()
 
-    def overview(self) -> dict:
+    def overview(self) -> dict[str, Any]:
         """Summary data from the main stock page (price metrics, analyst rating, description…)."""
         return fetch_overview(self.symbol)
 
@@ -88,7 +88,7 @@ class Stock:
         """Earnings call transcript list with date, quarter, summary, and audio URL."""
         return fetch_transcripts(self.symbol)
 
-    def transcript(self, transcript_id: int | str) -> dict:
+    def transcript(self, transcript_id: int | str) -> dict[str, Any]:
         """Full text and Q&A for a single earnings call transcript by ID."""
         return fetch_transcript(self.symbol, transcript_id)
 

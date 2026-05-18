@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 
@@ -8,10 +8,12 @@ from stockanalysis.core.session import get_session
 
 BASE = "https://stockanalysis.com"
 
-_cache: dict[tuple, list] = {}
+_cache: dict[tuple[str, tuple[tuple[str, str], ...]], list[Any]] = {}
 
 
-def fetch_data_json(path: str, params: dict | None = None, timeout: int = 15) -> list:
+def fetch_data_json(
+    path: str, params: dict[str, str] | None = None, timeout: int = 15
+) -> list[Any]:
     """Fetch a SvelteKit __data.json endpoint and return the node_data array."""
     key = (path, tuple(sorted((params or {}).items())))
     if key in _cache:
@@ -20,7 +22,7 @@ def fetch_data_json(path: str, params: dict | None = None, timeout: int = 15) ->
     headers = {"Referer": f"{BASE}{path}/"}
     resp = get_session().get(url, params=params or {}, headers=headers, timeout=timeout)
     resp.raise_for_status()
-    data = resp.json()["nodes"][2]["data"]
+    data = cast(list[Any], resp.json()["nodes"][2]["data"])
     _cache[key] = data
     return data
 
@@ -30,7 +32,7 @@ def clear_cache() -> None:
     _cache.clear()
 
 
-def resolve(val: Any, d: list) -> Any:
+def resolve(val: Any, d: list[Any]) -> Any:
     """Recursively resolve SvelteKit deduplicated index references."""
     if isinstance(val, int) and 0 <= val < len(d):
         v = d[val]
@@ -42,13 +44,15 @@ def resolve(val: Any, d: list) -> Any:
     return val
 
 
-def resolve_meta(node_data: list) -> dict:
+def resolve_meta(node_data: list[Any]) -> dict[str, Any]:
     """Resolve every key in the top-level meta dict."""
     meta = node_data[0]
     return {k: resolve(v, node_data) for k, v in meta.items()}
 
 
-def extract_financial_df(node_data: list, key: str = "financialData") -> pd.DataFrame:
+def extract_financial_df(
+    node_data: list[Any], key: str = "financialData"
+) -> pd.DataFrame:
     """Extract a financial DataFrame from node_data using SvelteKit dedup encoding."""
     meta = node_data[0]
     fd_refs = node_data[meta[key]]
@@ -59,12 +63,12 @@ def extract_financial_df(node_data: list, key: str = "financialData") -> pd.Data
     return df
 
 
-def extract_metrics_df(node_data: list) -> pd.DataFrame:
+def extract_metrics_df(node_data: list[Any]) -> pd.DataFrame:
     """Extract financials/metrics page into a flat DataFrame (all categories merged)."""
     meta = node_data[0]
     fd = resolve(meta["financialData"], node_data)
     dates = fd["datekey"]
-    columns: dict[str, list] = {}
+    columns: dict[str, list[Any]] = {}
     for metrics in fd["categories"].values():
         for metric_id, values in metrics.items():
             columns[metric_id] = values

@@ -2,6 +2,8 @@ import pandas as pd
 import pytest
 import stockanalysis as sa
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.fixture(scope="module")
 def aapl():

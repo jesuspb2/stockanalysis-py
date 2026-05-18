@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal, cast
 
 import pandas as pd
 
@@ -15,7 +15,7 @@ class Forecasts:
     def __init__(self, symbol: str) -> None:
         self._symbol = symbol.lower()
 
-    def _fetch(self) -> tuple[list, dict]:
+    def _fetch(self) -> tuple[list[Any], dict[str, Any]]:
         node_data = fetch_data_json(f"/stocks/{self._symbol}/forecast")
         return node_data, node_data[0]
 
@@ -43,14 +43,14 @@ class Forecasts:
         """Analyst EPS estimates as a Series indexed by fiscal period."""
         return self.estimates(period=period)["eps"]
 
-    def price_targets(self) -> dict:
+    def price_targets(self) -> dict[str, Any]:
         """
         Analyst price targets summary (high, low, average, current).
 
         Returns a plain dict.
         """
         node_data, meta = self._fetch()
-        return resolve(meta["priceTargets"], node_data)
+        return cast(dict[str, Any], resolve(meta["priceTargets"], node_data))
 
     def recommendations(self) -> pd.DataFrame:
         """

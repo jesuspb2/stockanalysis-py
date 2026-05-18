@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pandas as pd
 
 from stockanalysis.core.http import fetch_data_json, resolve, resolve_meta
 
 
-def fetch_transcript(symbol: str, transcript_id: int | str) -> dict:
+def fetch_transcript(symbol: str, transcript_id: int | str) -> dict[str, Any]:
     """Full text and Q&A for a single earnings call transcript."""
     node_data = fetch_data_json(f"/stocks/{symbol.lower()}/transcripts/{transcript_id}")
     return resolve_meta(node_data)

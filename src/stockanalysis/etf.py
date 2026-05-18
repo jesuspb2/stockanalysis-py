@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pandas as pd
 
 from stockanalysis.data.etf_history import ETFHistory
@@ -34,7 +36,7 @@ class ETF:
         self.holdings = ETFHoldings(symbol)
         self.history = ETFHistory(symbol)
 
-    def overview(self) -> dict:
+    def overview(self) -> dict[str, Any]:
         """AUM, expense ratio, description, and key fund info."""
         return fetch_etf_overview(self._sym)
 

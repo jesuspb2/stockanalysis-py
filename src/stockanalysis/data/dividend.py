@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pandas as pd
 
 from stockanalysis.core.http import fetch_data_json, resolve
@@ -11,14 +13,14 @@ class Dividend:
     def __init__(self, symbol: str) -> None:
         self._symbol = symbol.lower()
 
-    def _fetch(self) -> tuple[list, dict]:
+    def _fetch(self) -> tuple[list[Any], dict[str, Any]]:
         node_data = fetch_data_json(f"/stocks/{self._symbol}/dividend")
         return node_data, node_data[0]
 
     def info(self) -> str:
         """Plain-text summary of the current dividend (yield, frequency, next date…)."""
         node_data, meta = self._fetch()
-        return resolve(meta["infoBox"], node_data)
+        return cast(str, resolve(meta["infoBox"], node_data))
 
     def history(self) -> pd.DataFrame:
         """

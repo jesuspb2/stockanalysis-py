@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pandas as pd
 
 from stockanalysis.core.http import BASE, resolve
@@ -8,7 +10,7 @@ from stockanalysis.core.session import get_session
 _SCREENER_COLUMNS = "s,n,marketCap,price,change,revenue,netIncome,peRatio,sector"
 
 
-def search(query: str) -> list[dict]:
+def search(query: str) -> list[dict[str, Any]]:
     """
     Search for stocks, ETFs, and indices by name or symbol.
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pandas as pd
 
 from stockanalysis.core.http import fetch_data_json, resolve
@@ -32,11 +34,11 @@ class Statistics:
     def __init__(self, symbol: str) -> None:
         self._symbol = symbol.lower()
 
-    def _fetch(self) -> tuple[list, dict]:
+    def _fetch(self) -> tuple[list[Any], dict[str, Any]]:
         node_data = fetch_data_json(f"/stocks/{self._symbol}/statistics")
         return node_data, node_data[0]
 
-    def all(self) -> dict[str, list[dict]]:
+    def all(self) -> dict[str, list[dict[str, Any]]]:
         """
         All statistics sections as a dict of lists.
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from stockanalysis.core.http import fetch_data_json, resolve
 
 _SCALAR_KEYS = [
@@ -19,11 +21,11 @@ _SCALAR_KEYS = [
 ]
 
 
-def fetch_overview(symbol: str) -> dict:
+def fetch_overview(symbol: str) -> dict[str, Any]:
     """Summary data from the main stock page."""
     node_data = fetch_data_json(f"/stocks/{symbol.lower()}")
     meta = node_data[0]
-    result = {}
+    result: dict[str, Any] = {}
     for key in _SCALAR_KEYS:
         if key in meta:
             result[key] = resolve(meta[key], node_data)

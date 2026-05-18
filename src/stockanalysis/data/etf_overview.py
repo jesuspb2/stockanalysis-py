@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pandas as pd
 
 from stockanalysis.core.http import fetch_data_json, resolve
@@ -22,11 +24,11 @@ _OVERVIEW_KEYS = [
 ]
 
 
-def fetch_etf_overview(symbol: str) -> dict:
+def fetch_etf_overview(symbol: str) -> dict[str, Any]:
     """Summary data from the main ETF page (AUM, expense ratio, description…)."""
     node_data = fetch_data_json(f"/etf/{symbol.lower()}")
     meta = node_data[0]
-    result: dict = {}
+    result: dict[str, Any] = {}
     for key in _OVERVIEW_KEYS:
         if key in meta:
             result[key] = resolve(meta[key], node_data)
