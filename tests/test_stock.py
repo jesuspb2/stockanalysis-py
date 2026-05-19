@@ -162,11 +162,11 @@ def test_employees_history(aapl: sa.Stock) -> None:
     assert "count" in df.columns
 
 
-# --- financials.metrics ---
+# --- financials.kpis ---
 
 
-def test_financials_metrics(aapl: sa.Stock) -> None:
-    df = aapl.financials.metrics()
+def test_financials_kpis(aapl: sa.Stock) -> None:
+    df = aapl.financials.kpis()
     assert isinstance(df, pd.DataFrame) and not df.empty
 
 

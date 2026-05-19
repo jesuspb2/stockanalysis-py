@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 from pathlib import Path
 
 import httpx
 
-STATE_PATH = Path.cwd() / ".auth" / "state.json"
+STATE_PATH = (
+    Path(os.environ["SA_STATE_PATH"])
+    if "SA_STATE_PATH" in os.environ
+    else Path.cwd() / ".auth" / "state.json"
+)
 
 _DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",

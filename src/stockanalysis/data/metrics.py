@@ -6,17 +6,22 @@ import pandas as pd
 
 from stockanalysis.core.http import fetch_data_json, resolve
 
-Period = Literal["quarterly", "trailing"]
+Period = Literal["quarterly", "trailing", "annual"]
+
+# "annual" is accepted as an alias for "trailing" so callers that learn
+# period="annual" from financials.* don't silently get empty results here.
+_PERIOD_ALIAS: dict[str, str] = {"annual": "trailing"}
 
 
 def _segment_df(node_data: list[Any], period: Period = "quarterly") -> pd.DataFrame:
     """Parse a segment-breakdown metrics endpoint into a pivoted DataFrame."""
+    resolved_period = _PERIOD_ALIAS.get(period, period)
     meta = node_data[0]
     data_ref = meta.get("data")
     if data_ref is None:
         return pd.DataFrame()
     data_top = resolve(data_ref, node_data)
-    segments: list[dict[str, Any]] = data_top.get("data", {}).get(period, [])
+    segments: list[dict[str, Any]] = data_top.get("data", {}).get(resolved_period, [])
     if not segments:
         return pd.DataFrame()
     return _series_list_to_df(segments)

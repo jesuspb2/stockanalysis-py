@@ -69,7 +69,7 @@ stock = sa.stock("AAPL")
 | `income_statement(period="annual")` | Revenue, gross profit, net income, EPS, EBITDA… | `DataFrame` |
 | `balance_sheet(period="annual")` | Assets, liabilities, equity… | `DataFrame` |
 | `cash_flow(period="annual")` | Operating, investing, and financing cash flows | `DataFrame` |
-| `metrics(period="annual")` | Key financial metrics grouped by category | `DataFrame` |
+| `kpis(period="annual")` | Key financial KPIs grouped by category | `DataFrame` |
 
 `period` accepts `"annual"` or `"quarterly"`.
 
@@ -78,7 +78,7 @@ stock.financials.income_statement()
 stock.financials.income_statement(period="quarterly")
 stock.financials.balance_sheet()
 stock.financials.cash_flow(period="quarterly")
-stock.financials.metrics()
+stock.financials.kpis()
 ```
 
 ### `stock.forecasts`
@@ -167,7 +167,7 @@ stock.employees.history(period="quarterly")
 
 ### `stock.metrics`
 
-Segment-level breakdowns. `period` accepts `"quarterly"` or `"trailing"`.
+Segment-level breakdowns. `period` accepts `"quarterly"` or `"trailing"` (`"annual"` is accepted as an alias for `"trailing"`).
 
 | Method | Description | Returns |
 |---|---|---|

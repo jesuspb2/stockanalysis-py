@@ -40,9 +40,4 @@ def fetch_overview(symbol: str) -> dict[str, Any]:
         if key in meta:
             val = resolve(meta[key], node_data)
             result[key] = parse_numeric(val) if key in _NUMERIC_KEYS else val
-    info_rows = resolve(meta.get("infoTable", 0), node_data)
-    if isinstance(info_rows, list):
-        result["infoTable"] = {
-            row["t"]: row["v"] for row in info_rows if "t" in row and "v" in row
-        }
     return result

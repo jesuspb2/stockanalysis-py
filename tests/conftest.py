@@ -42,7 +42,7 @@ def company_node_data() -> list[Any]:
         {"profile": 1, "description": 2, "executives": 3},
         {"name": 4, "sector": 5, "industry": 6},
         "Apple Inc. designs, manufactures, and markets smartphones, personal computers, and more.",
-        [{"name": "Tim Cook", "title": "CEO & Director"}],
+        [{"Name": "Tim Cook", "Title": "CEO & Director"}],
         "Apple Inc.",
         "Technology",
         "Consumer Electronics",

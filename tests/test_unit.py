@@ -19,7 +19,12 @@ from stockanalysis.data.company import Company
 from stockanalysis.data.dividend import Dividend
 from stockanalysis.data.employees import Employees
 from stockanalysis.data.etf_history import ETFHistory
-from stockanalysis.data.etf_overview import fetch_etf_performance, fetch_etf_sectors
+from stockanalysis.data.etf_overview import (
+    fetch_etf_overview,
+    fetch_etf_performance,
+    fetch_etf_sectors,
+)
+from stockanalysis.data.overview import fetch_overview
 from stockanalysis.data.forecast import Forecasts
 from stockanalysis.data.history import History
 from stockanalysis.data.metrics import Metrics, _segment_df, _series_list_to_df
@@ -201,6 +206,7 @@ def test_company_description_parsing(company_node_data: list[Any]) -> None:
 
 
 def test_company_executives_parsing(company_node_data: list[Any]) -> None:
+    """D6: executives() normalizes Title-cased API columns to snake_case."""
     with patch(
         "stockanalysis.data.company.fetch_data_json", return_value=company_node_data
     ):
@@ -209,6 +215,9 @@ def test_company_executives_parsing(company_node_data: list[Any]) -> None:
     assert isinstance(df, pd.DataFrame)
     assert not df.empty
     assert "name" in df.columns
+    assert "title" in df.columns
+    assert "Name" not in df.columns
+    assert "Title" not in df.columns
 
 
 # ---------------------------------------------------------------------------
@@ -401,12 +410,22 @@ def test_segment_df_returns_empty_when_period_missing() -> None:
     assert df.empty
 
 
+def test_segment_df_annual_aliases_trailing(
+    segment_node_data: list[Any],
+) -> None:
+    df_trailing = _segment_df(segment_node_data, period="trailing")
+    df_annual = _segment_df(segment_node_data, period="annual")
+    assert not df_annual.empty
+    assert df_annual.equals(df_trailing)
+
+
 # ---------------------------------------------------------------------------
 # Dividend
 # ---------------------------------------------------------------------------
 
 
-def test_dividend_info_empty_fallback() -> None:
+def test_dividend_info_returns_dict_with_summary() -> None:
+    """D5: info() must return a dict; summary key holds the original prose."""
     node_data: list[Any] = [
         {"infoBox": 1, "history": 2},
         "Dividend yield: 0.50%",
@@ -415,7 +434,41 @@ def test_dividend_info_empty_fallback() -> None:
     with patch("stockanalysis.data.dividend.fetch_data_json", return_value=node_data):
         d = Dividend("AAPL")
         info = d.info()
-    assert isinstance(info, str)
+    assert isinstance(info, dict)
+    assert info["summary"] == "Dividend yield: 0.50%"
+    assert "annual_amount" not in info  # no infoTable in fixture
+
+
+def test_dividend_info_structured_fields() -> None:
+    """D5: info() extracts annual_amount, yield_pct, frequency, ex_date, pay_date."""
+    node_data: list[Any] = [
+        {"infoBox": 1, "infoTable": 2, "history": 3},
+        "Apple has an annual dividend of $1.04 per share, with a yield of 0.35%.",
+        {
+            "annual": 4,
+            "yield": 5,
+            "frequency": 6,
+            "exdiv": 7,
+            "payoutRatio": 8,
+        },
+        [{"dt": "2026-05-11", "amt": "$0.270", "pay": "2026-05-14"}],
+        "$1.04",
+        "0.35%",
+        "Quarterly",
+        "May 11, 2026",
+        "12.73%",
+    ]
+    with patch("stockanalysis.data.dividend.fetch_data_json", return_value=node_data):
+        d = Dividend("AAPL")
+        info = d.info()
+    assert isinstance(info, dict)
+    assert info["annual_amount"] == pytest.approx(1.04)
+    assert info["yield_pct"] == pytest.approx(0.35)
+    assert info["frequency"] == "Quarterly"
+    assert info["ex_date"] == "May 11, 2026"
+    assert info["payout_ratio"] == pytest.approx(12.73)
+    assert info["pay_date"] == "2026-05-14"
+    assert "summary" in info
 
 
 def test_dividend_history_missing_history_key() -> None:
@@ -477,6 +530,31 @@ def test_employees_history_returns_annual_data(employees_node_data: list[Any]) -
     assert isinstance(df, pd.DataFrame)
     assert not df.empty
     assert df.index.name == "date"
+
+
+def test_employees_history_drops_dead_columns(employees_node_data: list[Any]) -> None:
+    """D4: fullTime and partTime are always None — must not appear in result."""
+    node_data_with_dead_cols = [
+        {"historical_annual": 1, "historical_quarterly": 2},
+        [
+            {
+                "date": "2024-09-28",
+                "count": 150000,
+                "change": -1000,
+                "fullTime": None,
+                "partTime": None,
+            },
+        ],
+        [],
+    ]
+    with patch(
+        "stockanalysis.data.employees.fetch_data_json",
+        return_value=node_data_with_dead_cols,
+    ):
+        e = Employees("AAPL")
+        df = e.history()
+    assert "fullTime" not in df.columns
+    assert "partTime" not in df.columns
 
 
 # ---------------------------------------------------------------------------
@@ -676,14 +754,14 @@ def test_market_cap_renames_cryptic_columns() -> None:
 
 
 def test_etf_holdings_renames_cryptic_columns() -> None:
-    """C2: etf holdings() must rename no/n/s/as/sh to rank/name/symbol/weight_pct/shares."""
+    """C2/D7: holdings() renames columns and strips $ prefix from symbol."""
     from stockanalysis.data.etf_holdings import ETFHoldings
 
     node_data: list[Any] = [
         {"holdings": 1},
         [
-            {"no": 1, "n": "Apple Inc.", "s": "AAPL", "as": "7.20%", "sh": 900000000},
-            {"no": 2, "n": "Microsoft", "s": "MSFT", "as": "6.80%", "sh": 800000000},
+            {"no": 1, "n": "Apple Inc.", "s": "$AAPL", "as": "7.20%", "sh": 900000000},
+            {"no": 2, "n": "Microsoft", "s": "$MSFT", "as": "6.80%", "sh": 800000000},
         ],
     ]
     with patch(
@@ -693,6 +771,8 @@ def test_etf_holdings_renames_cryptic_columns() -> None:
     assert list(df.columns) == ["rank", "name", "symbol", "weight_pct", "shares"]
     assert "as" not in df.columns
     assert df["weight_pct"].iloc[0] == pytest.approx(7.20)
+    assert df["symbol"].iloc[0] == "AAPL"
+    assert df["symbol"].iloc[1] == "MSFT"
 
 
 def test_dividend_history_renames_cryptic_columns() -> None:
@@ -752,3 +832,77 @@ def test_fetch_transcript_unwraps_nested_transcript_key() -> None:
     assert isinstance(result, dict)
     assert result.get("title") == "Q2 2024"
     assert "body" in result
+
+
+# ---------------------------------------------------------------------------
+# Dead fields — D4
+# ---------------------------------------------------------------------------
+
+
+def test_overview_excludes_info_table() -> None:
+    """D4: infoTable always returns {} — must not appear in overview() result."""
+    node_data: list[Any] = [
+        {
+            "marketCap": 1,
+            "description": 2,
+            "infoTable": 3,
+        },
+        3_000_000_000_000,
+        "Apple Inc.",
+        [],
+    ]
+    with patch(
+        "stockanalysis.data.overview.fetch_data_json",
+        return_value=node_data,
+    ):
+        result = fetch_overview("AAPL")
+    assert "infoTable" not in result
+    assert result["marketCap"] == 3_000_000_000_000
+
+
+def test_screener_renames_industry_to_sector() -> None:
+    """D8: screener() must rename 'industry' → 'sector' for consistency with the filter param."""
+    from stockanalysis.data.search import screener
+
+    node_data: list[Any] = [
+        {"data": 1},
+        [
+            {
+                "s": "NVDA",
+                "n": "NVIDIA Corporation",
+                "marketCap": 5345469917158,
+                "price": 220.7,
+                "change": -0.73,
+                "industry": "Semiconductors",
+                "volume": 62644556,
+                "peRatio": 45.37,
+            }
+        ],
+    ]
+    with patch("stockanalysis.data.search.fetch_data_json", return_value=node_data):
+        df = screener(sector="Technology")
+    assert "sector" in df.columns
+    assert "industry" not in df.columns
+    assert df["sector"].iloc[0] == "Semiconductors"
+    assert df["symbol"].iloc[0] == "NVDA"
+
+
+def test_etf_overview_excludes_info_table() -> None:
+    """D4: infoTable always returns {} — must not appear in etf.overview() result."""
+    node_data: list[Any] = [
+        {
+            "description": 1,
+            "aum": 2,
+            "infoTable": 3,
+        },
+        "SPDR S&P 500 ETF Trust",
+        500_000_000_000,
+        [],
+    ]
+    with patch(
+        "stockanalysis.data.etf_overview.fetch_data_json",
+        return_value=node_data,
+    ):
+        result = fetch_etf_overview("SPY")
+    assert "infoTable" not in result
+    assert result["aum"] == 500_000_000_000

@@ -15,8 +15,7 @@ class Employees:
         """
         Historical annual employee headcount.
 
-        Returns a DataFrame indexed by date with columns:
-        count, change, growth, fullTime, partTime.
+        Returns a DataFrame indexed by date with columns: count, change, growth.
         """
         node_data = fetch_data_json(f"/stocks/{self._symbol}/employees")
         meta = node_data[0]
@@ -26,6 +25,7 @@ class Employees:
             return pd.DataFrame()
 
         df = pd.DataFrame(rows)
+        df = df.drop(columns=[c for c in ("fullTime", "partTime") if c in df.columns])
         if "date" in df.columns:
             df = df.set_index("date")
             df.index.name = "date"

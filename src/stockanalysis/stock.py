@@ -32,7 +32,7 @@ class Stock:
         stock.financials.income_statement(period="annual")
         stock.financials.balance_sheet(period="quarterly")
         stock.financials.cash_flow()
-        stock.financials.metrics()
+        stock.financials.kpis()
         stock.forecasts.estimates()
         stock.forecasts.revenue()
         stock.forecasts.eps()

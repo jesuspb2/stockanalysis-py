@@ -44,8 +44,8 @@ class Financials:
         """Cash flow statement (operating, investing, financing…)."""
         return self._fetch("financials/cash-flow-statement", period)
 
-    def metrics(self, period: Period = "annual") -> pd.DataFrame:
-        """Key financial metrics by category (revenue, gross profit, KPIs…)."""
+    def kpis(self, period: Period = "annual") -> pd.DataFrame:
+        """Key financial KPIs by category (revenue, gross profit, margins…)."""
         path = f"/stocks/{self._symbol}/financials/metrics"
         params = {} if period == "annual" else {"p": "quarterly"}
         node_data = fetch_data_json(path, params)

@@ -17,10 +17,32 @@ class Dividend:
         node_data = fetch_data_json(f"/stocks/{self._symbol}/dividend")
         return node_data, node_data[0]
 
-    def info(self) -> str:
-        """Plain-text summary of the current dividend (yield, frequency, next date…)."""
+    def info(self) -> dict[str, Any]:
+        """Structured summary of the current dividend.
+
+        Keys: annual_amount, yield_pct, frequency, ex_date, pay_date,
+        payout_ratio (all optional except summary), summary (prose fallback).
+        """
         node_data, meta = self._fetch()
-        return cast(str, resolve(meta["infoBox"], node_data))
+        summary = cast(str, resolve(meta["infoBox"], node_data))
+        result: dict[str, Any] = {"summary": summary}
+
+        if "infoTable" in meta:
+            table = resolve(meta["infoTable"], node_data)
+            if isinstance(table, dict):
+                result["annual_amount"] = parse_numeric(table.get("annual", ""))
+                result["yield_pct"] = parse_numeric(table.get("yield", ""))
+                result["frequency"] = table.get("frequency")
+                result["ex_date"] = table.get("exdiv")
+                result["payout_ratio"] = parse_numeric(table.get("payoutRatio", ""))
+
+        history_ref = meta.get("history")
+        if history_ref is not None:
+            rows = resolve(history_ref, node_data)
+            if isinstance(rows, list) and rows and isinstance(rows[0], dict):
+                result["pay_date"] = rows[0].get("pay")
+
+        return result
 
     def history(self) -> pd.DataFrame:
         """

@@ -28,6 +28,8 @@ class ETFHoldings:
                 "sh": "shares",
             }
         )
+        if "symbol" in df.columns:
+            df["symbol"] = df["symbol"].str.lstrip("$")
         if "weight_pct" in df.columns:
             df["weight_pct"] = df["weight_pct"].map(parse_numeric)
         if top is not None:

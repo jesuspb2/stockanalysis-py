@@ -35,7 +35,11 @@ class Company:
         return cast(str, resolve(meta["description"], node_data))
 
     def executives(self) -> pd.DataFrame:
-        """Key executives (name, title, pay, age…)."""
+        """Key executives with columns: name, title."""
         node_data, meta = self._fetch()
         rows = resolve(meta["executives"], node_data)
-        return pd.DataFrame(rows) if isinstance(rows, list) else pd.DataFrame()
+        if not isinstance(rows, list):
+            return pd.DataFrame()
+        df = pd.DataFrame(rows)
+        df.columns = [c.lower() for c in df.columns]
+        return df

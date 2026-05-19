@@ -7,7 +7,7 @@ import pandas as pd
 from stockanalysis.core.http import BASE, fetch_data_json, resolve
 from stockanalysis.core.session import get_session
 
-_SCREENER_COLUMNS = "s,n,marketCap,price,change,revenue,netIncome,peRatio,sector"
+_SCREENER_COLUMNS = "s,n,marketCap,price,change,peRatio"
 
 
 _TYPE_MAP = {"s": "stock", "e": "etf", "i": "index", "sy": "stock"}
@@ -71,7 +71,7 @@ def screener(
 
     Returns:
         DataFrame with one row per stock and columns: symbol, name, marketCap,
-        price, change, revenue, netIncome, peRatio, sector.
+        price, change, sector, volume, peRatio.
 
     Usage:
         import stockanalysis as sa
@@ -96,6 +96,6 @@ def screener(
     if not isinstance(raw, list):
         return pd.DataFrame()
     df = pd.DataFrame(raw)
-    rename = {"s": "symbol", "n": "name"}
+    rename = {"s": "symbol", "n": "name", "industry": "sector"}
     df = df.rename(columns={k: v for k, v in rename.items() if k in df.columns})
     return df
