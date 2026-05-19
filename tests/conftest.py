@@ -1,4 +1,5 @@
 """Shared fixtures for unit tests (no network required)."""
+
 from __future__ import annotations
 
 import pytest

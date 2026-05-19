@@ -15,9 +15,12 @@ def fetch_transcript(symbol: str, transcript_id: int | str) -> dict[str, Any]:
 
 def fetch_transcripts(symbol: str) -> pd.DataFrame:
     """List of earnings call transcripts with metadata and summary."""
-    node_data = fetch_data_json(f"/stocks/{symbol.lower()}/transcripts")
+    try:
+        node_data = fetch_data_json(f"/stocks/{symbol.lower()}/transcripts")
+    except ValueError:
+        return pd.DataFrame()
     meta = node_data[0]
-    rows = resolve(meta["transcripts"], node_data)
+    rows = resolve(meta.get("transcripts", 0), node_data)
     if not isinstance(rows, list):
         return pd.DataFrame()
     records = []

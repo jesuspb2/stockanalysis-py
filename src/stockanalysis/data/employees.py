@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from typing import Literal
 
 import pandas as pd
@@ -30,7 +31,13 @@ class Employees:
         key = "historical_annual" if period == "annual" else "historical_quarterly"
         rows = resolve(meta[key], node_data)
 
-        if not isinstance(rows, list):
+        if not isinstance(rows, list) or len(rows) == 0:
+            if period == "quarterly":
+                warnings.warn(
+                    f"No quarterly employee data available for {self._symbol.upper()}. "
+                    "Not all companies publish quarterly headcount figures.",
+                    stacklevel=2,
+                )
             return pd.DataFrame()
 
         df = pd.DataFrame(rows)

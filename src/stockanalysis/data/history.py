@@ -40,6 +40,8 @@ class History:
                 "c": "close",
                 "v": "volume",
                 "ch": "change",
+                "a": "adjusted_close",
+                "div": "dividend",
             }
         )
         df = df.set_index("date")

@@ -12,8 +12,13 @@ Period = Literal["quarterly", "trailing"]
 def _segment_df(node_data: list[Any], period: Period = "quarterly") -> pd.DataFrame:
     """Parse a segment-breakdown metrics endpoint into a pivoted DataFrame."""
     meta = node_data[0]
-    data_top = resolve(meta["data"], node_data)
-    segments: list[dict[str, Any]] = data_top["data"][period]
+    data_ref = meta.get("data")
+    if data_ref is None:
+        return pd.DataFrame()
+    data_top = resolve(data_ref, node_data)
+    segments: list[dict[str, Any]] = data_top.get("data", {}).get(period, [])
+    if not segments:
+        return pd.DataFrame()
     return _series_list_to_df(segments)
 
 

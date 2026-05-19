@@ -54,13 +54,23 @@ def fetch_etf_sectors(symbol: str) -> pd.DataFrame:
     return df
 
 
+_PERF_RENAME = {
+    "tr1m": "1m",
+    "trYTD": "YTD",
+    "tr1y": "1y",
+    "cagr3y": "3y_cagr",
+    "cagr5y": "5y_cagr",
+    "cagr10y": "10y_cagr",
+    "cagrMAX": "max_cagr",
+}
+
+
 def fetch_etf_performance(symbol: str) -> pd.DataFrame:
-    """Returns by period (1m, 3m, 6m, YTD, 1y, 3y, 5y, 10y)."""
-    node_data = fetch_data_json(f"/etf/{symbol.lower()}/performance")
+    """Returns by period (1m, YTD, 1y, 5y_cagr, 10y_cagr, max_cagr)."""
+    node_data = fetch_data_json(f"/etf/{symbol.lower()}")
     meta = node_data[0]
-    raw = resolve(meta.get("performance", meta.get("data", 0)), node_data)
-    if isinstance(raw, list):
-        return pd.DataFrame(raw)
-    if isinstance(raw, dict):
-        return pd.DataFrame(list(raw.items()), columns=["period", "return"])
-    return pd.DataFrame(columns=["period", "return"])
+    raw = resolve(meta.get("performance", 0), node_data)
+    if not isinstance(raw, dict):
+        return pd.DataFrame(columns=["period", "return"])
+    renamed = {_PERF_RENAME.get(k, k): v for k, v in raw.items()}
+    return pd.DataFrame(list(renamed.items()), columns=["period", "return"])

@@ -29,6 +29,8 @@ class ETFHistory:
                 "c": "close",
                 "v": "volume",
                 "ch": "change",
+                "a": "adjusted_close",
+                "div": "dividend",
             }
         )
         if "date" in df.columns:

@@ -4,8 +4,7 @@ from typing import Any
 
 import pandas as pd
 
-from stockanalysis.core.http import BASE, resolve
-from stockanalysis.core.session import get_session
+from stockanalysis.core.http import fetch_data_json, resolve
 
 _SCREENER_COLUMNS = "s,n,marketCap,price,change,revenue,netIncome,peRatio,sector"
 
@@ -20,16 +19,10 @@ def search(query: str) -> list[dict[str, Any]]:
         import stockanalysis as sa
         sa.search("Apple")   # [{"symbol": "AAPL", "name": "Apple Inc.", "type": "stock"}, …]
     """
-    url = f"{BASE}/search/__data.json"
-    resp = get_session().get(
-        url,
-        params={"q": query},
-        headers={"Referer": f"{BASE}/search/"},
-        timeout=15,
-    )
-    resp.raise_for_status()
-    payload = resp.json()
-    node_data = payload["nodes"][2]["data"]
+    try:
+        node_data = fetch_data_json("/search", params={"q": query})
+    except (ValueError, KeyError):
+        return []
     meta = node_data[0]
     raw = resolve(meta.get("results", meta.get("searchResults", 0)), node_data)
     if not isinstance(raw, list):
@@ -87,16 +80,7 @@ def screener(
         params["f[exchange]"] = exchange
     params.update(extra_params)
 
-    url = f"{BASE}/screener/stock/__data.json"
-    resp = get_session().get(
-        url,
-        params=params,
-        headers={"Referer": f"{BASE}/screener/stock/"},
-        timeout=30,
-    )
-    resp.raise_for_status()
-    payload = resp.json()
-    node_data = payload["nodes"][2]["data"]
+    node_data = fetch_data_json("/stocks/screener", params=params, timeout=30)
     meta = node_data[0]
     raw = resolve(meta.get("data", 0), node_data)
     if not isinstance(raw, list):

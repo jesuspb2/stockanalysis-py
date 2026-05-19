@@ -22,7 +22,26 @@ def fetch_data_json(
     headers = {"Referer": f"{BASE}{path}/"}
     resp = get_session().get(url, params=params or {}, headers=headers, timeout=timeout)
     resp.raise_for_status()
-    data = cast(list[Any], resp.json()["nodes"][2]["data"])
+    nodes = resp.json()["nodes"]
+    data_node = next(
+        (
+            n
+            for n in reversed(nodes)
+            if isinstance(n, dict) and n.get("type") == "data" and "data" in n
+        ),
+        None,
+    )
+    if data_node is None:
+        error_node = next(
+            (n for n in nodes if isinstance(n, dict) and n.get("type") == "error"), None
+        )
+        msg = (
+            error_node["error"].get("message", "unknown")
+            if error_node
+            else "no data node found"
+        )
+        raise ValueError(f"API returned no data: {msg}")
+    data = cast(list[Any], data_node["data"])
     _cache[key] = data
     return data
 
