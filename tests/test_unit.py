@@ -677,14 +677,18 @@ def test_etf_history_prices_has_adjusted_close_and_dividend(
 
 
 def test_fetch_transcript_prefer_keys_picks_transcript_node() -> None:
-    """B1: prefer_keys must select the node with title/body/qa, not the layout node."""
+    """B1: prefer_keys must select the transcriptQuarter node, not the layout node."""
     from stockanalysis.core.http import clear_cache, fetch_data_json
 
     transcript_node_data: list[Any] = [
-        {"title": 1, "body": 2, "qa": 3},
-        "Q1 2024 Earnings",
-        "...",
-        [],
+        {"transcriptQuarter": 1, "transcriptMeta": 2},
+        {
+            "id": 123,
+            "eventTitle": "Q1 2024",
+            "summaryLongHtml": "...",
+            "transcriptTurns": [],
+        },
+        {"title": "Q1 2024 Transcript", "description": "..."},
     ]
     layout_node_data: list[Any] = [{"info": 1}, {"type": "stock", "symbol": "AAPL"}]
 
@@ -699,31 +703,46 @@ def test_fetch_transcript_prefer_keys_picks_transcript_node() -> None:
         mock_sess.return_value.get.return_value = mock_resp
         clear_cache()
         result = fetch_data_json(
-            "/stocks/aapl/transcripts/123", prefer_keys=("title", "body", "qa")
+            "/stocks/aapl/transcripts/548666-q1-2024",
+            prefer_keys=("transcriptQuarter",),
         )
 
     assert result is transcript_node_data
-    assert "title" in result[0]
+    assert "transcriptQuarter" in result[0]
 
 
 def test_fetch_transcript_returns_title_body_qa() -> None:
     """B1: fetch_transcript must return a dict with title, body, qa keys."""
     transcript_node_data: list[Any] = [
-        {"title": 1, "body": 2, "qa": 3},
-        "Q1 2024 Earnings Call",
-        "CEO: Revenue was strong this quarter...",
-        [{"speaker": "Analyst", "text": "What is the outlook?"}],
+        {"transcriptQuarter": 1, "transcriptMeta": 2},
+        {
+            "id": 12345,
+            "eventTitle": "Q1 2024 Earnings Call",
+            "summaryLongHtml": "<p>CEO: Revenue was strong this quarter...</p>",
+            "transcriptTurns": [
+                {
+                    "speakerName": "Analyst",
+                    "role": "Analyst",
+                    "paragraphs": [
+                        [{"text": "What is the outlook?", "startSec": 0, "endSec": 5}]
+                    ],
+                }
+            ],
+        },
+        {"title": "Apple Q1 2024 Earnings Call Transcript", "description": "..."},
     ]
     with patch(
         "stockanalysis.data.transcripts.fetch_data_json",
         return_value=transcript_node_data,
     ):
-        result = fetch_transcript("AAPL", 12345)
+        result = fetch_transcript("AAPL", "548666-q1-2024")
 
     assert isinstance(result, dict)
     assert result.get("title") == "Q1 2024 Earnings Call"
     assert "body" in result
     assert "qa" in result
+    assert isinstance(result["qa"], list)
+    assert result["qa"][0]["speaker"] == "Analyst"
 
 
 # ---------------------------------------------------------------------------
@@ -816,22 +835,38 @@ def test_income_statement_renames_cryptic_columns() -> None:
     assert "rnd" not in df.columns
 
 
-def test_fetch_transcript_unwraps_nested_transcript_key() -> None:
-    """B1: if transcript content is nested under a 'transcript' key, unwrap it."""
-    node_data: list[Any] = [
-        {"transcript": 1, "info": 2},
-        {"title": "Q2 2024", "body": "Prepared remarks...", "qa": []},
-        {"type": "stock", "symbol": "AAPL"},
+def test_fetch_transcript_resolves_numeric_id_via_list() -> None:
+    """B1: fetch_transcript resolves a numeric id to detailSlug via the transcript list."""
+    list_node_data: list[Any] = [
+        {"transcripts": 1},
+        [{"id": 99999, "detailSlug": "548666-q2-2024", "quartrEventId": 548666}],
     ]
+    transcript_node_data: list[Any] = [
+        {"transcriptQuarter": 1, "transcriptMeta": 2},
+        {
+            "id": 99999,
+            "eventTitle": "Q2 2024",
+            "summaryLongHtml": "Prepared remarks...",
+            "transcriptTurns": [],
+        },
+        {"title": "Apple Q2 2024", "description": "..."},
+    ]
+
+    def side_effect(path: str, **kwargs: Any) -> list[Any]:
+        if "548666" in path:
+            return transcript_node_data
+        return list_node_data
+
     with patch(
         "stockanalysis.data.transcripts.fetch_data_json",
-        return_value=node_data,
+        side_effect=side_effect,
     ):
         result = fetch_transcript("AAPL", 99999)
 
     assert isinstance(result, dict)
     assert result.get("title") == "Q2 2024"
     assert "body" in result
+    assert "qa" in result
 
 
 # ---------------------------------------------------------------------------

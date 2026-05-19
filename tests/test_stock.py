@@ -145,7 +145,8 @@ def test_market_cap_history(aapl: sa.Stock) -> None:
 
 def test_dividend_info(aapl: sa.Stock) -> None:
     info = aapl.dividend.info()
-    assert isinstance(info, str) and len(info) > 10
+    assert isinstance(info, dict)
+    assert set(["annual_amount", "yield_pct", "frequency"]).issubset(info.keys())
 
 
 def test_dividend_history(aapl: sa.Stock) -> None:
