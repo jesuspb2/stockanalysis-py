@@ -88,7 +88,7 @@ stock.financials.kpis()
 | `estimates(period="annual")` | Consensus revenue, EPS, EBITDA, net income… | `DataFrame` |
 | `revenue(period="annual")` | Revenue estimates only | `Series` |
 | `eps(period="annual")` | EPS estimates only | `Series` |
-| `price_targets()` | High, low, average, and current price targets | `dict` |
+| `price_targets()` | High, low, average, median, current price targets, and analyst count | `dict` |
 | `recommendations()` | Buy/hold/sell breakdown over time | `DataFrame` |
 
 `period` accepts `"annual"` or `"quarterly"`.
@@ -99,7 +99,14 @@ stock.forecasts.estimates(period="quarterly")
 stock.forecasts.revenue()
 stock.forecasts.eps()
 stock.forecasts.price_targets()
-# {"high": 250.0, "low": 160.0, "average": 210.0, "current": 195.0}
+# {
+#   "high": 250.0,
+#   "low": 160.0,
+#   "average": 210.0,
+#   "median": 212.0,
+#   "current": 195.0,
+#   "num_price_targets": 37,
+# }
 
 stock.forecasts.recommendations()
 # DataFrame with columns: strongBuy, buy, hold, sell, strongSell
@@ -128,7 +135,7 @@ stock.history.market_cap(frequency="monthly")
 |---|---|---|
 | `profile()` | Name, sector, industry, country, CEO, IPO date, founded year, employees | `dict` |
 | `description()` | Long-form business description | `str` |
-| `executives()` | Key executives — name, title, pay, age… | `DataFrame` |
+| `executives()` | Key executives — name and title | `DataFrame` |
 
 ```python
 stock.company.profile()
@@ -155,14 +162,11 @@ stock.dividend.history()
 
 | Method | Description | Returns |
 |---|---|---|
-| `history(period="annual")` | Headcount history | `DataFrame` |
-
-`period` accepts `"annual"` or `"quarterly"`.
+| `history()` | Headcount history | `DataFrame` |
 
 ```python
 stock.employees.history()
-stock.employees.history(period="quarterly")
-# DataFrame with columns: count, change, growth, fullTime, partTime
+# DataFrame with columns: count, change, growth
 ```
 
 ### `stock.metrics`
@@ -194,7 +198,7 @@ stock.metrics.operating_metrics()
 | `statistics()` | All valuation stats as a flat table (section, id, title, value) | `DataFrame` |
 | `overview()` | Price metrics, analyst rating, description from the main page | `dict` |
 | `transcripts()` | Earnings call transcript list with date, quarter, summary, audio URL | `DataFrame` |
-| `transcript(id)` | Full text and Q&A for one earnings call | `dict` |
+| `transcript(id)` | Structured transcript with AI summary and speaker turns | `dict` |
 
 ```python
 stock.ratios()
@@ -208,7 +212,13 @@ transcripts = stock.transcripts()
 
 transcript_id = transcripts.iloc[0]["id"]
 stock.transcript(transcript_id)
-# {"title": "...", "body": "...", "qa": [...]}
+# {
+#   "title": "Apple Q2 2026 Earnings Call",
+#   "summary_html": "<p>AI-generated summary...</p>",
+#   "turns": [
+#     {"speaker": "Tim Cook", "role": "CEO", "text": "..."},
+#   ],
+# }
 ```
 
 ---

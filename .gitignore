@@ -10,3 +10,4 @@ dist/
 .idea
 .playwright-cli
 *plan.md
+example.py
