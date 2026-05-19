@@ -27,7 +27,14 @@ class Financials:
 
     def income_statement(self, period: Period = "annual") -> pd.DataFrame:
         """Income statement (revenue, gross profit, net income, EPS, EBITDA…)."""
-        return self._fetch("financials", period)
+        df = self._fetch("financials", period)
+        return df.rename(
+            columns={
+                "cor": "cost_of_revenue",
+                "sgna": "sga_expense",
+                "rnd": "rd_expense",
+            }
+        )
 
     def balance_sheet(self, period: Period = "annual") -> pd.DataFrame:
         """Balance sheet (assets, liabilities, equity…)."""

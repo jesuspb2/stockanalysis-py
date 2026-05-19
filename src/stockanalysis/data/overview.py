@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from stockanalysis.core.http import fetch_data_json, resolve
+from stockanalysis.core.http import fetch_data_json, parse_numeric, resolve
 
 _SCALAR_KEYS = [
     "marketCap",
@@ -20,6 +20,16 @@ _SCALAR_KEYS = [
     "description",
 ]
 
+_NUMERIC_KEYS = {
+    "marketCap",
+    "revenue",
+    "netIncome",
+    "eps",
+    "peRatio",
+    "forwardPE",
+    "beta",
+}
+
 
 def fetch_overview(symbol: str) -> dict[str, Any]:
     """Summary data from the main stock page."""
@@ -28,7 +38,8 @@ def fetch_overview(symbol: str) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key in _SCALAR_KEYS:
         if key in meta:
-            result[key] = resolve(meta[key], node_data)
+            val = resolve(meta[key], node_data)
+            result[key] = parse_numeric(val) if key in _NUMERIC_KEYS else val
     info_rows = resolve(meta.get("infoTable", 0), node_data)
     if isinstance(info_rows, list):
         result["infoTable"] = {

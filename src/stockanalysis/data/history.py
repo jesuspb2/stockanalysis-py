@@ -45,6 +45,7 @@ class History:
             }
         )
         df = df.set_index("date")
+        df.index = pd.to_datetime(df.index)
         df.index.name = "date"
         return df
 
@@ -66,6 +67,7 @@ class History:
             return pd.DataFrame()
 
         df = pd.DataFrame(rows)
+        df = df.rename(columns={"d": "date", "p": "percent_change", "v": "value"})
         if "date" in df.columns:
             df = df.set_index("date")
             df.index.name = "date"

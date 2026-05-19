@@ -4,7 +4,7 @@ from typing import Any
 
 import pandas as pd
 
-from stockanalysis.core.http import fetch_data_json, resolve
+from stockanalysis.core.http import fetch_data_json, parse_numeric, resolve
 
 _OVERVIEW_KEYS = [
     "description",
@@ -23,6 +23,8 @@ _OVERVIEW_KEYS = [
     "beta",
 ]
 
+_ETF_NUMERIC_KEYS = {"expenseRatio", "aum", "nav", "dividendYield", "pe", "beta"}
+
 
 def fetch_etf_overview(symbol: str) -> dict[str, Any]:
     """Summary data from the main ETF page (AUM, expense ratio, description…)."""
@@ -31,7 +33,8 @@ def fetch_etf_overview(symbol: str) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key in _OVERVIEW_KEYS:
         if key in meta:
-            result[key] = resolve(meta[key], node_data)
+            val = resolve(meta[key], node_data)
+            result[key] = parse_numeric(val) if key in _ETF_NUMERIC_KEYS else val
     info_rows = resolve(meta.get("infoTable", 0), node_data)
     if isinstance(info_rows, list):
         result["infoTable"] = {
@@ -42,16 +45,17 @@ def fetch_etf_overview(symbol: str) -> dict[str, Any]:
 
 def fetch_etf_sectors(symbol: str) -> pd.DataFrame:
     """Sector allocation as a DataFrame with columns: sector, weight."""
-    node_data = fetch_data_json(f"/etf/{symbol.lower()}")
+    node_data = fetch_data_json(
+        f"/etf/{symbol.lower()}/holdings",
+        prefer_keys=("sectors", "holdings", "asset_allocation"),
+    )
     meta = node_data[0]
-    raw = resolve(meta.get("sectorBreakdown", meta.get("sectors", 0)), node_data)
-    if isinstance(raw, dict):
-        df = pd.DataFrame(list(raw.items()), columns=["sector", "weight"])
-    elif isinstance(raw, list):
-        df = pd.DataFrame(raw)
-    else:
+    raw = resolve(meta.get("sectors", []), node_data)
+    if not isinstance(raw, list) or not raw:
         return pd.DataFrame(columns=["sector", "weight"])
-    return df
+    df = pd.DataFrame(raw)
+    df = df.rename(columns={"n": "sector", "w": "weight"})
+    return df[["sector", "weight"]]
 
 
 _PERF_RENAME = {

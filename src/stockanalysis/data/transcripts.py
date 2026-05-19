@@ -9,8 +9,17 @@ from stockanalysis.core.http import fetch_data_json, resolve, resolve_meta
 
 def fetch_transcript(symbol: str, transcript_id: int | str) -> dict[str, Any]:
     """Full text and Q&A for a single earnings call transcript."""
-    node_data = fetch_data_json(f"/stocks/{symbol.lower()}/transcripts/{transcript_id}")
-    return resolve_meta(node_data)
+    node_data = fetch_data_json(
+        f"/stocks/{symbol.lower()}/transcripts/{transcript_id}",
+        prefer_keys=("title", "body", "qa", "transcript"),
+    )
+    result = resolve_meta(node_data)
+    # Unwrap if transcript content is nested under a "transcript" key
+    if set(result.keys()) <= {"transcript", "info"} and "transcript" in result:
+        inner = result["transcript"]
+        if isinstance(inner, dict) and any(k in inner for k in ("title", "body", "qa")):
+            return inner
+    return result
 
 
 def fetch_transcripts(symbol: str) -> pd.DataFrame:

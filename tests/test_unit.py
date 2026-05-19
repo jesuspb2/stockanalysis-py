@@ -11,6 +11,7 @@ import pytest
 import stockanalysis as sa
 from stockanalysis.core.http import (
     extract_financial_df,
+    parse_numeric,
     resolve,
     resolve_meta,
 )
@@ -18,17 +19,43 @@ from stockanalysis.data.company import Company
 from stockanalysis.data.dividend import Dividend
 from stockanalysis.data.employees import Employees
 from stockanalysis.data.etf_history import ETFHistory
-from stockanalysis.data.etf_overview import fetch_etf_performance
+from stockanalysis.data.etf_overview import fetch_etf_performance, fetch_etf_sectors
 from stockanalysis.data.forecast import Forecasts
 from stockanalysis.data.history import History
 from stockanalysis.data.metrics import Metrics, _segment_df, _series_list_to_df
 from stockanalysis.data.statistics import Statistics
-from stockanalysis.data.transcripts import fetch_transcripts
+from stockanalysis.data.transcripts import fetch_transcript, fetch_transcripts
 
 
 # ---------------------------------------------------------------------------
 # core/http helpers
 # ---------------------------------------------------------------------------
+
+
+def test_parse_numeric_trillion() -> None:
+    assert parse_numeric("4.37T") == pytest.approx(4.37e12)
+
+
+def test_parse_numeric_billion_with_dollar() -> None:
+    assert parse_numeric("$766.97B") == pytest.approx(766.97e9)
+
+
+def test_parse_numeric_percent() -> None:
+    assert parse_numeric("0.09%") == pytest.approx(0.09)
+
+
+def test_parse_numeric_plain_float() -> None:
+    assert parse_numeric("36.11") == pytest.approx(36.11)
+
+
+def test_parse_numeric_passthrough_compound_string() -> None:
+    assert parse_numeric("$1.04 (0.35%)") == "$1.04 (0.35%)"
+
+
+def test_parse_numeric_passthrough_non_string() -> None:
+    assert parse_numeric(42) == 42
+    assert parse_numeric(3.14) == 3.14
+    assert parse_numeric(None) is None
 
 
 def test_resolve_int_index() -> None:
@@ -255,6 +282,37 @@ def test_forecasts_recommendations_is_dataframe(forecast_node_data: list[Any]) -
     assert isinstance(df, pd.DataFrame)
 
 
+def test_forecasts_recommendations_drops_noisy_columns() -> None:
+    """C3: recommendations() must drop filtered/month/updated columns."""
+    node_data: list[Any] = [
+        {"estimates": 1, "priceTargets": 2, "recommendations": 3},
+        {"table": 4},
+        {"high": 250.0, "low": 150.0, "average": 200.0, "current": 185.0},
+        [
+            {
+                "date": "2024-01-01",
+                "strongBuy": 20,
+                "buy": 10,
+                "hold": 5,
+                "sell": 1,
+                "strongSell": 0,
+                "month": "Jan '24",
+                "updated": "2024-01-15",
+                "filtered": "{'1': {'buy': 0, 'hold': 1}}",
+            }
+        ],
+        {"annual": 5},
+        {"dates": [], "revenue": [], "eps": []},
+    ]
+    with patch("stockanalysis.data.forecast.fetch_data_json", return_value=node_data):
+        df = Forecasts("AAPL").recommendations()
+    assert "filtered" not in df.columns
+    assert "month" not in df.columns
+    assert "updated" not in df.columns
+    assert "strongBuy" in df.columns
+    assert df.index.name == "date"
+
+
 # ---------------------------------------------------------------------------
 # Statistics
 # ---------------------------------------------------------------------------
@@ -472,6 +530,36 @@ def test_etf_performance_returns_empty_when_no_performance_key() -> None:
 
 
 # ---------------------------------------------------------------------------
+# ETF sectors — reads holdings page, returns clean sector/weight DataFrame (Bug B2)
+# ---------------------------------------------------------------------------
+
+
+def test_etf_sectors_columns_and_types(etf_holdings_node_data: list[Any]) -> None:
+    """B2: fetch_etf_sectors must return sector/weight from the /holdings endpoint."""
+    with patch(
+        "stockanalysis.data.etf_overview.fetch_data_json",
+        return_value=etf_holdings_node_data,
+    ):
+        df = fetch_etf_sectors("SPY")
+    assert isinstance(df, pd.DataFrame)
+    assert not df.empty
+    assert list(df.columns) == ["sector", "weight"]
+    assert df["sector"].tolist() == ["Technology", "Financials", "Health Care"]
+    assert df["weight"].tolist() == [34.24, 12.05, 8.84]
+
+
+def test_etf_sectors_returns_empty_when_no_sectors_key() -> None:
+    node_data: list[Any] = [{"holdings": 1}, []]
+    with patch(
+        "stockanalysis.data.etf_overview.fetch_data_json", return_value=node_data
+    ):
+        df = fetch_etf_sectors("SPY")
+    assert isinstance(df, pd.DataFrame)
+    assert df.empty
+    assert list(df.columns) == ["sector", "weight"]
+
+
+# ---------------------------------------------------------------------------
 # History prices — adjusted_close and dividend columns (Gap #7)
 # ---------------------------------------------------------------------------
 
@@ -503,3 +591,164 @@ def test_etf_history_prices_has_adjusted_close_and_dividend(
     assert isinstance(df, pd.DataFrame)
     assert "adjusted_close" in df.columns
     assert "dividend" in df.columns
+
+
+# ---------------------------------------------------------------------------
+# B1: fetch_transcript — picks transcript node, not stock-layout node
+# ---------------------------------------------------------------------------
+
+
+def test_fetch_transcript_prefer_keys_picks_transcript_node() -> None:
+    """B1: prefer_keys must select the node with title/body/qa, not the layout node."""
+    from stockanalysis.core.http import clear_cache, fetch_data_json
+
+    transcript_node_data: list[Any] = [
+        {"title": 1, "body": 2, "qa": 3},
+        "Q1 2024 Earnings",
+        "...",
+        [],
+    ]
+    layout_node_data: list[Any] = [{"info": 1}, {"type": "stock", "symbol": "AAPL"}]
+
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {
+        "nodes": [
+            {"type": "data", "data": transcript_node_data},  # page data — first
+            {"type": "data", "data": layout_node_data},  # layout data — last
+        ]
+    }
+    with patch("stockanalysis.core.http.get_session") as mock_sess:
+        mock_sess.return_value.get.return_value = mock_resp
+        clear_cache()
+        result = fetch_data_json(
+            "/stocks/aapl/transcripts/123", prefer_keys=("title", "body", "qa")
+        )
+
+    assert result is transcript_node_data
+    assert "title" in result[0]
+
+
+def test_fetch_transcript_returns_title_body_qa() -> None:
+    """B1: fetch_transcript must return a dict with title, body, qa keys."""
+    transcript_node_data: list[Any] = [
+        {"title": 1, "body": 2, "qa": 3},
+        "Q1 2024 Earnings Call",
+        "CEO: Revenue was strong this quarter...",
+        [{"speaker": "Analyst", "text": "What is the outlook?"}],
+    ]
+    with patch(
+        "stockanalysis.data.transcripts.fetch_data_json",
+        return_value=transcript_node_data,
+    ):
+        result = fetch_transcript("AAPL", 12345)
+
+    assert isinstance(result, dict)
+    assert result.get("title") == "Q1 2024 Earnings Call"
+    assert "body" in result
+    assert "qa" in result
+
+
+# ---------------------------------------------------------------------------
+# C2: Cryptic column name renames
+# ---------------------------------------------------------------------------
+
+
+def test_market_cap_renames_cryptic_columns() -> None:
+    """C2: market_cap() must rename d/p/v to date/percent_change/value."""
+    from stockanalysis.data.history import History
+
+    node_data: list[Any] = [
+        {"tables": 1},
+        {"annual": 2},
+        [
+            {"d": "2023-09-30", "p": 5.12, "v": 2750000000000},
+            {"d": "2024-09-28", "p": 12.34, "v": 3500000000000},
+        ],
+    ]
+    with patch("stockanalysis.data.history.fetch_data_json", return_value=node_data):
+        df = History("AAPL").market_cap()
+    assert "percent_change" in df.columns
+    assert "value" in df.columns
+    assert df.index.name == "date"
+    assert "d" not in df.columns
+    assert "p" not in df.columns
+    assert "v" not in df.columns
+
+
+def test_etf_holdings_renames_cryptic_columns() -> None:
+    """C2: etf holdings() must rename no/n/s/as/sh to rank/name/symbol/weight_pct/shares."""
+    from stockanalysis.data.etf_holdings import ETFHoldings
+
+    node_data: list[Any] = [
+        {"holdings": 1},
+        [
+            {"no": 1, "n": "Apple Inc.", "s": "AAPL", "as": "7.20%", "sh": 900000000},
+            {"no": 2, "n": "Microsoft", "s": "MSFT", "as": "6.80%", "sh": 800000000},
+        ],
+    ]
+    with patch(
+        "stockanalysis.data.etf_holdings.fetch_data_json", return_value=node_data
+    ):
+        df = ETFHoldings("SPY")()
+    assert list(df.columns) == ["rank", "name", "symbol", "weight_pct", "shares"]
+    assert "as" not in df.columns
+    assert df["weight_pct"].iloc[0] == pytest.approx(7.20)
+
+
+def test_dividend_history_renames_cryptic_columns() -> None:
+    """C2: dividend history() must rename dt/amt/dec to date/amount/declaration_date."""
+    node_data: list[Any] = [
+        {"infoBox": 1, "history": 2},
+        "Dividend yield: 0.50%",
+        [
+            {"dt": "2024-02-09", "amt": "0.24", "dec": "2024-01-25", "type": "regular"},
+            {"dt": "2024-05-10", "amt": "0.25", "dec": "2024-04-26", "type": "regular"},
+        ],
+    ]
+    with patch("stockanalysis.data.dividend.fetch_data_json", return_value=node_data):
+        d = Dividend("AAPL")
+        df = d.history()
+    assert "amount" in df.columns
+    assert "declaration_date" in df.columns
+    assert "amt" not in df.columns
+    assert "dec" not in df.columns
+    assert df["amount"].iloc[0] == pytest.approx(0.24)
+
+
+def test_income_statement_renames_cryptic_columns() -> None:
+    """C2: income_statement() must rename cor/sgna/rnd to full descriptive names."""
+    node_data: list[Any] = [
+        {"financialData": 1},
+        {"datekey": 2, "revenue": 3, "cor": 4, "sgna": 5, "rnd": 6},
+        ["2023-09-30", "2024-09-28"],
+        [383285000000, 391035000000],
+        [210352000000, 210352000000],
+        [25010000000, 26000000000],
+        [29915000000, 31370000000],
+    ]
+    with patch("stockanalysis.data.financials.fetch_data_json", return_value=node_data):
+        df = sa.stock("AAPL").financials.income_statement()
+    assert "cost_of_revenue" in df.columns
+    assert "sga_expense" in df.columns
+    assert "rd_expense" in df.columns
+    assert "cor" not in df.columns
+    assert "sgna" not in df.columns
+    assert "rnd" not in df.columns
+
+
+def test_fetch_transcript_unwraps_nested_transcript_key() -> None:
+    """B1: if transcript content is nested under a 'transcript' key, unwrap it."""
+    node_data: list[Any] = [
+        {"transcript": 1, "info": 2},
+        {"title": "Q2 2024", "body": "Prepared remarks...", "qa": []},
+        {"type": "stock", "symbol": "AAPL"},
+    ]
+    with patch(
+        "stockanalysis.data.transcripts.fetch_data_json",
+        return_value=node_data,
+    ):
+        result = fetch_transcript("AAPL", 99999)
+
+    assert isinstance(result, dict)
+    assert result.get("title") == "Q2 2024"
+    assert "body" in result

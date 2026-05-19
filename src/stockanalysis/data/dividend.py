@@ -4,7 +4,7 @@ from typing import Any, cast
 
 import pandas as pd
 
-from stockanalysis.core.http import fetch_data_json, resolve
+from stockanalysis.core.http import fetch_data_json, parse_numeric, resolve
 
 
 class Dividend:
@@ -39,6 +39,11 @@ class Dividend:
             return pd.DataFrame()
 
         df = pd.DataFrame(rows)
+        df = df.rename(
+            columns={"dt": "date", "amt": "amount", "dec": "declaration_date"}
+        )
+        if "amount" in df.columns:
+            df["amount"] = df["amount"].map(parse_numeric)
         date_col = next(
             (c for c in ("exDate", "ex_date", "date") if c in df.columns), None
         )

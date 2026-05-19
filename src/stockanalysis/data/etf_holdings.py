@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from stockanalysis.core.http import fetch_data_json, resolve
+from stockanalysis.core.http import fetch_data_json, parse_numeric, resolve
 
 
 class ETFHoldings:
@@ -19,6 +19,17 @@ class ETFHoldings:
         if not isinstance(rows, list):
             return pd.DataFrame()
         df = pd.DataFrame(rows)
+        df = df.rename(
+            columns={
+                "no": "rank",
+                "n": "name",
+                "s": "symbol",
+                "as": "weight_pct",
+                "sh": "shares",
+            }
+        )
+        if "weight_pct" in df.columns:
+            df["weight_pct"] = df["weight_pct"].map(parse_numeric)
         if top is not None:
             df = df.head(top)
         return df

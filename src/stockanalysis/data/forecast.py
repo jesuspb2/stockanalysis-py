@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 from typing import Any, Literal, cast
 
 import pandas as pd
@@ -33,6 +34,8 @@ class Forecasts:
         dates = data.pop("dates", [])
         df = pd.DataFrame(data, index=dates)
         df.index.name = "period"
+        today = datetime.date.today().isoformat()
+        df["is_estimate"] = [str(d) >= today for d in df.index]
         return df
 
     def revenue(self, period: Period = "annual") -> pd.Series:
@@ -45,24 +48,48 @@ class Forecasts:
 
     def price_targets(self) -> dict[str, Any]:
         """
-        Analyst price targets summary (high, low, average, current).
+        Analyst price targets summary: high, low, average, median, current, num_price_targets.
 
         Returns a plain dict.
         """
         node_data, meta = self._fetch()
-        return cast(dict[str, Any], resolve(meta["priceTargets"], node_data))
+        raw = cast(dict[str, Any], resolve(meta["priceTargets"], node_data))
+
+        # Derive current price from the targets chart (monthly, last non-null close)
+        targets_node = resolve(meta.get("targets", {}), node_data)
+        chart = targets_node.get("chart", []) if isinstance(targets_node, dict) else []
+        current = next(
+            (
+                row["c"]
+                for row in reversed(chart)
+                if isinstance(row, dict) and row.get("c") is not None
+            ),
+            None,
+        )
+
+        return {
+            "high": raw.get("high"),
+            "low": raw.get("low"),
+            "average": raw.get("avg"),
+            "median": raw.get("median"),
+            "current": current,
+            "num_price_targets": raw.get("numPriceTargets"),
+        }
 
     def recommendations(self) -> pd.DataFrame:
         """
         Analyst buy/hold/sell recommendation breakdown over time.
 
-        Returns a DataFrame with columns: strongBuy, buy, hold, sell, strongSell.
+        Returns a DataFrame indexed by date with columns: strongBuy, buy, hold, sell, strongSell.
         """
         node_data, meta = self._fetch()
         rows = resolve(meta["recommendations"], node_data)
         if not isinstance(rows, list):
             return pd.DataFrame()
         df = pd.DataFrame(rows)
+        df = df.drop(
+            columns=[c for c in ("filtered", "month", "updated") if c in df.columns]
+        )
         if "date" in df.columns:
             df = df.set_index("date")
             df.index.name = "date"

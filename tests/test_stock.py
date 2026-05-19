@@ -54,6 +54,8 @@ def test_forecasts_estimates(aapl: sa.Stock) -> None:
     df = aapl.forecasts.estimates()
     assert isinstance(df, pd.DataFrame) and not df.empty
     assert "revenue" in df.columns
+    assert "is_estimate" in df.columns
+    assert df["is_estimate"].dtype == bool
 
 
 def test_forecasts_revenue(aapl: sa.Stock) -> None:
@@ -69,6 +71,18 @@ def test_forecasts_eps(aapl: sa.Stock) -> None:
 def test_forecasts_price_targets(aapl: sa.Stock) -> None:
     pt = aapl.forecasts.price_targets()
     assert isinstance(pt, dict)
+    assert set(pt.keys()) == {
+        "high",
+        "low",
+        "average",
+        "median",
+        "current",
+        "num_price_targets",
+    }
+    assert "avg" not in pt
+    assert "source" not in pt
+    assert isinstance(pt["average"], (int, float))
+    assert pt["current"] is not None
 
 
 def test_forecasts_recommendations(aapl: sa.Stock) -> None:
@@ -111,6 +125,7 @@ def test_price_history(aapl: sa.Stock) -> None:
     df = aapl.history.prices()
     assert isinstance(df, pd.DataFrame) and not df.empty
     assert "close" in df.columns
+    assert isinstance(df.index, pd.DatetimeIndex)
 
 
 def test_price_history_adjusted_columns(aapl: sa.Stock) -> None:
@@ -233,6 +248,9 @@ def test_etf_overview(spy: sa.ETF) -> None:
 def test_etf_sectors(spy: sa.ETF) -> None:
     df = spy.sectors()
     assert isinstance(df, pd.DataFrame) and not df.empty
+    assert list(df.columns) == ["sector", "weight"]
+    assert df["weight"].dtype in (float, "float64")
+    assert not df["sector"].str.startswith("$").any()
 
 
 def test_etf_holdings(spy: sa.ETF) -> None:

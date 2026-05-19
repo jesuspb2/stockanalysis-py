@@ -137,6 +137,20 @@ def etf_main_node_data() -> list[Any]:
 
 
 @pytest.fixture()
+def etf_holdings_node_data() -> list[Any]:
+    """Minimal node_data for the ETF /holdings page (sectors key)."""
+    return [
+        {"sectors": 1, "holdings": 2},
+        [
+            {"n": "Technology", "w": 34.24},
+            {"n": "Financials", "w": 12.05},
+            {"n": "Health Care", "w": 8.84},
+        ],
+        [],
+    ]
+
+
+@pytest.fixture()
 def history_node_data() -> list[Any]:
     """Minimal node_data for a stock/ETF history endpoint with all columns."""
     return [
