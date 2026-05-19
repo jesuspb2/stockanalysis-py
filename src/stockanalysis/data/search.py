@@ -7,7 +7,7 @@ import pandas as pd
 from stockanalysis.core.http import BASE, fetch_data_json, resolve
 from stockanalysis.core.session import get_session
 
-_SCREENER_COLUMNS = "s,n,marketCap,price,change,peRatio"
+_SCREENER_COLUMNS = "s,n,marketCap,price,change,sector,peRatio"
 
 
 _TYPE_MAP = {"s": "stock", "e": "etf", "i": "index", "sy": "stock"}
@@ -96,6 +96,8 @@ def screener(
     if not isinstance(raw, list):
         return pd.DataFrame()
     df = pd.DataFrame(raw)
-    rename = {"s": "symbol", "n": "name", "industry": "sector"}
+    rename = {"s": "symbol", "n": "name"}
     df = df.rename(columns={k: v for k, v in rename.items() if k in df.columns})
+    if sector is not None and "sector" in df.columns:
+        df = df[df["sector"] == sector].reset_index(drop=True)
     return df

@@ -39,5 +39,9 @@ def fetch_overview(symbol: str) -> dict[str, Any]:
     for key in _SCALAR_KEYS:
         if key in meta:
             val = resolve(meta[key], node_data)
-            result[key] = parse_numeric(val) if key in _NUMERIC_KEYS else val
+            if key in _NUMERIC_KEYS:
+                val = parse_numeric(val)
+                if key == "marketCap" and isinstance(val, float) and val.is_integer():
+                    val = int(val)
+            result[key] = val
     return result

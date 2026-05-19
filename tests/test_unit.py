@@ -895,8 +895,8 @@ def test_overview_excludes_info_table() -> None:
     assert result["marketCap"] == 3_000_000_000_000
 
 
-def test_screener_renames_industry_to_sector() -> None:
-    """D8: screener() must rename 'industry' → 'sector' for consistency with the filter param."""
+def test_screener_sector_filter_returns_matching_rows() -> None:
+    """D8: screener(sector=...) must expose a sector column and filter results to that sector."""
     from stockanalysis.data.search import screener
 
     node_data: list[Any] = [
@@ -908,17 +908,27 @@ def test_screener_renames_industry_to_sector() -> None:
                 "marketCap": 5345469917158,
                 "price": 220.7,
                 "change": -0.73,
-                "industry": "Semiconductors",
+                "sector": "Technology",
                 "volume": 62644556,
                 "peRatio": 45.37,
-            }
+            },
+            {
+                "s": "JPM",
+                "n": "JPMorgan Chase & Co.",
+                "marketCap": 700000000000,
+                "price": 200.0,
+                "change": 0.5,
+                "sector": "Financials",
+                "volume": 10000000,
+                "peRatio": 12.0,
+            },
         ],
     ]
     with patch("stockanalysis.data.search.fetch_data_json", return_value=node_data):
         df = screener(sector="Technology")
     assert "sector" in df.columns
-    assert "industry" not in df.columns
-    assert df["sector"].iloc[0] == "Semiconductors"
+    assert len(df) == 1
+    assert df["sector"].iloc[0] == "Technology"
     assert df["symbol"].iloc[0] == "NVDA"
 
 
