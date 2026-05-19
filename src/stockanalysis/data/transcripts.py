@@ -24,12 +24,31 @@ def _slug_for_id(symbol: str, transcript_id: int | str) -> str:
     return needle
 
 
+def _turn_to_dict(turn: dict[str, Any]) -> dict[str, Any]:
+    para_groups = turn.get("paragraphs", [])
+    texts: list[str] = []
+    for group in para_groups if isinstance(para_groups, list) else []:
+        for seg in group if isinstance(group, list) else [group]:
+            if isinstance(seg, dict) and "text" in seg:
+                texts.append(seg["text"])
+    return {
+        "speaker": turn.get("speakerName", ""),
+        "role": turn.get("role", ""),
+        "text": " ".join(texts),
+    }
+
+
 def fetch_transcript(symbol: str, transcript_id: int | str) -> dict[str, Any]:
     """Full text and Q&A for a single earnings call transcript.
 
     transcript_id can be the detailSlug (e.g. '548666-q2-2026') from
     transcripts() or a numeric id — numeric ids are resolved to their slug
     via the transcript list endpoint.
+
+    Returns:
+        title:        event title
+        summary_html: AI-generated HTML summary from the site
+        turns:        full transcript as list of {speaker, role, text}
     """
     s = str(transcript_id)
     slug = s if "-" in s else _slug_for_id(symbol, s)
@@ -44,27 +63,12 @@ def fetch_transcript(symbol: str, transcript_id: int | str) -> dict[str, Any]:
     if not isinstance(tq, dict):
         return meta
 
-    turns = tq.get("transcriptTurns", [])
-    qa: list[dict[str, Any]] = []
-    for turn in turns if isinstance(turns, list) else []:
-        para_groups = turn.get("paragraphs", [])
-        texts: list[str] = []
-        for group in para_groups if isinstance(para_groups, list) else []:
-            for seg in group if isinstance(group, list) else [group]:
-                if isinstance(seg, dict) and "text" in seg:
-                    texts.append(seg["text"])
-        qa.append(
-            {
-                "speaker": turn.get("speakerName", ""),
-                "role": turn.get("role", ""),
-                "text": " ".join(texts),
-            }
-        )
+    turns = tq.get("transcriptTurns", []) or []
 
     return {
         "title": tq.get("eventTitle", ""),
-        "body": tq.get("summaryLongHtml", ""),
-        "qa": qa,
+        "summary_html": tq.get("summaryLongHtml", ""),
+        "turns": [_turn_to_dict(t) for t in turns],
     }
 
 
