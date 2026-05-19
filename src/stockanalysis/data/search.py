@@ -4,9 +4,13 @@ from typing import Any
 
 import pandas as pd
 
-from stockanalysis.core.http import fetch_data_json, resolve
+from stockanalysis.core.http import BASE, fetch_data_json, resolve
+from stockanalysis.core.session import get_session
 
 _SCREENER_COLUMNS = "s,n,marketCap,price,change,revenue,netIncome,peRatio,sector"
+
+
+_TYPE_MAP = {"s": "stock", "e": "etf", "i": "index", "sy": "stock"}
 
 
 def search(query: str) -> list[dict[str, Any]]:
@@ -20,11 +24,17 @@ def search(query: str) -> list[dict[str, Any]]:
         sa.search("Apple")   # [{"symbol": "AAPL", "name": "Apple Inc.", "type": "stock"}, …]
     """
     try:
-        node_data = fetch_data_json("/search", params={"q": query})
-    except (ValueError, KeyError):
+        resp = get_session().get(
+            f"{BASE}/api/search",
+            params={"q": query},
+            headers={"Referer": f"{BASE}/"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+    except Exception:
         return []
-    meta = node_data[0]
-    raw = resolve(meta.get("results", meta.get("searchResults", 0)), node_data)
+    raw = payload.get("data", [])
     if not isinstance(raw, list):
         return []
     results = []
@@ -34,7 +44,7 @@ def search(query: str) -> list[dict[str, Any]]:
                 {
                     "symbol": item.get("s") or item.get("symbol"),
                     "name": item.get("n") or item.get("name"),
-                    "type": item.get("type", "stock"),
+                    "type": _TYPE_MAP.get(item.get("t", ""), "stock"),
                 }
             )
     return results
