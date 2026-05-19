@@ -1,13 +1,8 @@
 from __future__ import annotations
 
-import warnings
-from typing import Literal
-
 import pandas as pd
 
 from stockanalysis.core.http import fetch_data_json, resolve
-
-Period = Literal["annual", "quarterly"]
 
 
 class Employees:
@@ -16,28 +11,18 @@ class Employees:
     def __init__(self, symbol: str) -> None:
         self._symbol = symbol.lower()
 
-    def history(self, period: Period = "annual") -> pd.DataFrame:
+    def history(self) -> pd.DataFrame:
         """
-        Historical employee headcount.
-
-        Args:
-            period: "annual" or "quarterly".
+        Historical annual employee headcount.
 
         Returns a DataFrame indexed by date with columns:
         count, change, growth, fullTime, partTime.
         """
         node_data = fetch_data_json(f"/stocks/{self._symbol}/employees")
         meta = node_data[0]
-        key = "historical_annual" if period == "annual" else "historical_quarterly"
-        rows = resolve(meta[key], node_data)
+        rows = resolve(meta["historical_annual"], node_data)
 
         if not isinstance(rows, list) or len(rows) == 0:
-            if period == "quarterly":
-                warnings.warn(
-                    f"No quarterly employee data available for {self._symbol.upper()}. "
-                    "Not all companies publish quarterly headcount figures.",
-                    stacklevel=2,
-                )
             return pd.DataFrame()
 
         df = pd.DataFrame(rows)

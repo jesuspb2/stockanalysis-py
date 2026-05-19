@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -405,37 +404,21 @@ def test_dividend_history_with_data() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Employees — quarterly warning (Gap #8)
+# Employees — annual-only API (Gap #2)
 # ---------------------------------------------------------------------------
 
 
-def test_employees_quarterly_warns_when_empty(employees_node_data: list[Any]) -> None:
-    """employees.history('quarterly') must warn when no data is available."""
+def test_employees_history_returns_annual_data(employees_node_data: list[Any]) -> None:
+    """employees.history() returns annual headcount data without a period argument."""
     with patch(
         "stockanalysis.data.employees.fetch_data_json",
         return_value=employees_node_data,
     ):
         e = Employees("AAPL")
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            df = e.history(period="quarterly")
-    assert isinstance(df, pd.DataFrame)
-    assert df.empty
-    assert any("quarterly" in str(w.message).lower() for w in caught)
-
-
-def test_employees_annual_no_warning(employees_node_data: list[Any]) -> None:
-    with patch(
-        "stockanalysis.data.employees.fetch_data_json",
-        return_value=employees_node_data,
-    ):
-        e = Employees("AAPL")
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            df = e.history(period="annual")
+        df = e.history()
     assert isinstance(df, pd.DataFrame)
     assert not df.empty
-    assert not any("quarterly" in str(w.message).lower() for w in caught)
+    assert df.index.name == "date"
 
 
 # ---------------------------------------------------------------------------

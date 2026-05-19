@@ -39,7 +39,7 @@ sa.screener(sector="Technology", market_cap_min=10e9)
 
 ## Authentication (Pro)
 
-Some endpoints return limited data for unauthenticated users (e.g. analyst estimates beyond the current year). Saving a session unlocks full Pro data.
+Authentication unlocks the full historical data for `forecasts.recommendations()` (~1 year without auth vs. the complete multi-year history with auth). Other forecast endpoints (`estimates`, `revenue`, `eps`, `price_targets`) return complete data without authentication.
 
 ```bash
 # 1. Add credentials to .env
