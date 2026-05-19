@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
+import warnings
+from typing import Any
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
+import pytest
 
 import stockanalysis as sa
 from stockanalysis.core.http import (
@@ -14,9 +17,14 @@ from stockanalysis.core.http import (
 )
 from stockanalysis.data.company import Company
 from stockanalysis.data.dividend import Dividend
+from stockanalysis.data.employees import Employees
+from stockanalysis.data.etf_history import ETFHistory
+from stockanalysis.data.etf_overview import fetch_etf_performance
 from stockanalysis.data.forecast import Forecasts
-from stockanalysis.data.metrics import Metrics, _series_list_to_df
+from stockanalysis.data.history import History
+from stockanalysis.data.metrics import Metrics, _segment_df, _series_list_to_df
 from stockanalysis.data.statistics import Statistics
+from stockanalysis.data.transcripts import fetch_transcripts
 
 
 # ---------------------------------------------------------------------------
@@ -24,34 +32,34 @@ from stockanalysis.data.statistics import Statistics
 # ---------------------------------------------------------------------------
 
 
-def test_resolve_int_index():
-    d = ["a", "b", "c"]
+def test_resolve_int_index() -> None:
+    d: list[Any] = ["a", "b", "c"]
     assert resolve(1, d) == "b"
 
 
-def test_resolve_passthrough_string():
-    d = ["a"]
+def test_resolve_passthrough_string() -> None:
+    d: list[Any] = ["a"]
     assert resolve("hello", d) == "hello"
 
 
-def test_resolve_dict_recursion():
-    d = [{"key": 2}, None, "resolved"]
+def test_resolve_dict_recursion() -> None:
+    d: list[Any] = [{"key": 2}, None, "resolved"]
     result = resolve(0, d)
     assert result == {"key": "resolved"}
 
 
-def test_resolve_list_recursion():
-    d = [[2, 3], None, "x", "y"]
+def test_resolve_list_recursion() -> None:
+    d: list[Any] = [[2, 3], None, "x", "y"]
     result = resolve(0, d)
     assert result == ["x", "y"]
 
 
-def test_resolve_out_of_bounds():
-    d = ["a"]
+def test_resolve_out_of_bounds() -> None:
+    d: list[Any] = ["a"]
     assert resolve(99, d) == 99
 
 
-def test_extract_financial_df(financial_node_data):
+def test_extract_financial_df(financial_node_data: list[Any]) -> None:
     df = extract_financial_df(financial_node_data)
     assert isinstance(df, pd.DataFrame)
     assert not df.empty
@@ -62,14 +70,14 @@ def test_extract_financial_df(financial_node_data):
     assert df["revenue"].tolist() == [383285000000, 391035000000]
 
 
-def test_resolve_meta(company_node_data):
+def test_resolve_meta(company_node_data: list[Any]) -> None:
     result = resolve_meta(company_node_data)
     assert isinstance(result, dict)
     assert "profile" in result
     assert "description" in result
 
 
-def test_series_list_to_df():
+def test_series_list_to_df() -> None:
     segments = [
         {
             "name": "iPhone",
@@ -88,11 +96,64 @@ def test_series_list_to_df():
 
 
 # ---------------------------------------------------------------------------
+# fetch_data_json — dynamic node resolution
+# ---------------------------------------------------------------------------
+
+
+def test_fetch_data_json_raises_on_error_node() -> None:
+    from stockanalysis.core.http import clear_cache, fetch_data_json
+
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {
+        "nodes": [{"type": "error", "error": {"message": "not found"}, "status": 404}]
+    }
+    with patch("stockanalysis.core.http.get_session") as mock_sess:
+        mock_sess.return_value.get.return_value = mock_resp
+        clear_cache()
+        with pytest.raises(ValueError, match="not found"):
+            fetch_data_json("/test/no-data-node")
+
+
+def test_fetch_data_json_raises_with_no_data_key() -> None:
+    from stockanalysis.core.http import clear_cache, fetch_data_json
+
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {
+        "nodes": [
+            {"type": "data"},  # type is "data" but no "data" key
+        ]
+    }
+    with patch("stockanalysis.core.http.get_session") as mock_sess:
+        mock_sess.return_value.get.return_value = mock_resp
+        clear_cache()
+        with pytest.raises(ValueError, match="no data node found"):
+            fetch_data_json("/test/no-data-key")
+
+
+def test_fetch_data_json_finds_node_not_at_index_2() -> None:
+    from stockanalysis.core.http import clear_cache, fetch_data_json
+
+    expected: list[Any] = [{"key": "value"}]
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {
+        "nodes": [
+            {"type": "session"},  # index 0 — no "data" key
+            {"type": "data", "data": expected},  # index 1 — should be found
+        ]
+    }
+    with patch("stockanalysis.core.http.get_session") as mock_sess:
+        mock_sess.return_value.get.return_value = mock_resp
+        clear_cache()
+        result = fetch_data_json("/test/node-at-index-1")
+    assert result == expected
+
+
+# ---------------------------------------------------------------------------
 # Company
 # ---------------------------------------------------------------------------
 
 
-def test_company_profile_parsing(company_node_data):
+def test_company_profile_parsing(company_node_data: list[Any]) -> None:
     with patch(
         "stockanalysis.data.company.fetch_data_json", return_value=company_node_data
     ):
@@ -103,7 +164,7 @@ def test_company_profile_parsing(company_node_data):
     assert profile["sector"] == "Technology"
 
 
-def test_company_description_parsing(company_node_data):
+def test_company_description_parsing(company_node_data: list[Any]) -> None:
     with patch(
         "stockanalysis.data.company.fetch_data_json", return_value=company_node_data
     ):
@@ -113,7 +174,7 @@ def test_company_description_parsing(company_node_data):
     assert len(desc) > 20
 
 
-def test_company_executives_parsing(company_node_data):
+def test_company_executives_parsing(company_node_data: list[Any]) -> None:
     with patch(
         "stockanalysis.data.company.fetch_data_json", return_value=company_node_data
     ):
@@ -129,7 +190,7 @@ def test_company_executives_parsing(company_node_data):
 # ---------------------------------------------------------------------------
 
 
-def test_income_statement_columns(financial_node_data):
+def test_income_statement_columns(financial_node_data: list[Any]) -> None:
     with patch(
         "stockanalysis.data.financials.fetch_data_json",
         return_value=financial_node_data,
@@ -140,7 +201,7 @@ def test_income_statement_columns(financial_node_data):
     assert "revenue" in df.columns
 
 
-def test_balance_sheet_returns_dataframe(financial_node_data):
+def test_balance_sheet_returns_dataframe(financial_node_data: list[Any]) -> None:
     with patch(
         "stockanalysis.data.financials.fetch_data_json",
         return_value=financial_node_data,
@@ -155,7 +216,7 @@ def test_balance_sheet_returns_dataframe(financial_node_data):
 # ---------------------------------------------------------------------------
 
 
-def test_forecasts_estimates_structure(forecast_node_data):
+def test_forecasts_estimates_structure(forecast_node_data: list[Any]) -> None:
     with patch(
         "stockanalysis.data.forecast.fetch_data_json", return_value=forecast_node_data
     ):
@@ -167,7 +228,7 @@ def test_forecasts_estimates_structure(forecast_node_data):
     assert "eps" in df.columns
 
 
-def test_forecasts_revenue_is_series(forecast_node_data):
+def test_forecasts_revenue_is_series(forecast_node_data: list[Any]) -> None:
     with patch(
         "stockanalysis.data.forecast.fetch_data_json", return_value=forecast_node_data
     ):
@@ -176,7 +237,7 @@ def test_forecasts_revenue_is_series(forecast_node_data):
     assert isinstance(s, pd.Series)
 
 
-def test_forecasts_price_targets_is_dict(forecast_node_data):
+def test_forecasts_price_targets_is_dict(forecast_node_data: list[Any]) -> None:
     with patch(
         "stockanalysis.data.forecast.fetch_data_json", return_value=forecast_node_data
     ):
@@ -186,7 +247,7 @@ def test_forecasts_price_targets_is_dict(forecast_node_data):
     assert "high" in pt and "average" in pt
 
 
-def test_forecasts_recommendations_is_dataframe(forecast_node_data):
+def test_forecasts_recommendations_is_dataframe(forecast_node_data: list[Any]) -> None:
     with patch(
         "stockanalysis.data.forecast.fetch_data_json", return_value=forecast_node_data
     ):
@@ -200,7 +261,7 @@ def test_forecasts_recommendations_is_dataframe(forecast_node_data):
 # ---------------------------------------------------------------------------
 
 
-def test_statistics_to_dataframe(statistics_node_data):
+def test_statistics_to_dataframe(statistics_node_data: list[Any]) -> None:
     with patch(
         "stockanalysis.data.statistics.fetch_data_json",
         return_value=statistics_node_data,
@@ -212,7 +273,7 @@ def test_statistics_to_dataframe(statistics_node_data):
     assert "valuation" in df["section"].values
 
 
-def test_statistics_all_returns_dict(statistics_node_data):
+def test_statistics_all_returns_dict(statistics_node_data: list[Any]) -> None:
     with patch(
         "stockanalysis.data.statistics.fetch_data_json",
         return_value=statistics_node_data,
@@ -228,7 +289,7 @@ def test_statistics_all_returns_dict(statistics_node_data):
 # ---------------------------------------------------------------------------
 
 
-def test_metrics_revenue_by_segment(segment_node_data):
+def test_metrics_revenue_by_segment(segment_node_data: list[Any]) -> None:
     with patch(
         "stockanalysis.data.metrics.fetch_data_json", return_value=segment_node_data
     ):
@@ -239,8 +300,8 @@ def test_metrics_revenue_by_segment(segment_node_data):
     assert "iPhone" in df.columns
 
 
-def test_metrics_operating_metrics():
-    node_data = [
+def test_metrics_operating_metrics() -> None:
+    node_data: list[Any] = [
         {"data": 1},
         {
             "annualMetrics": 2,
@@ -262,13 +323,34 @@ def test_metrics_operating_metrics():
     assert not df.empty
 
 
+def test_segment_df_returns_empty_when_data_key_missing() -> None:
+    """Bug #6: _segment_df must not KeyError when meta has no 'data' key."""
+    node_data: list[Any] = [
+        {},  # meta with no "data" key
+    ]
+    df = _segment_df(node_data)
+    assert isinstance(df, pd.DataFrame)
+    assert df.empty
+
+
+def test_segment_df_returns_empty_when_period_missing() -> None:
+    node_data: list[Any] = [
+        {"data": 1},
+        {"data": 2},
+        {},  # no "quarterly" or "trailing" key
+    ]
+    df = _segment_df(node_data, period="quarterly")
+    assert isinstance(df, pd.DataFrame)
+    assert df.empty
+
+
 # ---------------------------------------------------------------------------
 # Dividend
 # ---------------------------------------------------------------------------
 
 
-def test_dividend_info_empty_fallback():
-    node_data = [
+def test_dividend_info_empty_fallback() -> None:
+    node_data: list[Any] = [
         {"infoBox": 1, "history": 2},
         "Dividend yield: 0.50%",
         "not-a-list",
@@ -279,8 +361,8 @@ def test_dividend_info_empty_fallback():
     assert isinstance(info, str)
 
 
-def test_dividend_history_returns_empty_on_bad_data():
-    node_data = [
+def test_dividend_history_returns_empty_on_bad_data() -> None:
+    node_data: list[Any] = [
         {"infoBox": 1, "history": 2},
         "Dividend yield: 0.50%",
         "not-a-list",
@@ -292,8 +374,8 @@ def test_dividend_history_returns_empty_on_bad_data():
     assert df.empty
 
 
-def test_dividend_history_with_data():
-    node_data = [
+def test_dividend_history_with_data() -> None:
+    node_data: list[Any] = [
         {"infoBox": 1, "history": 2},
         "Dividend yield: 0.50%",
         [
@@ -307,3 +389,121 @@ def test_dividend_history_with_data():
     assert isinstance(df, pd.DataFrame)
     assert not df.empty
     assert df.index.name == "ex_date"
+
+
+# ---------------------------------------------------------------------------
+# Employees — quarterly warning (Gap #8)
+# ---------------------------------------------------------------------------
+
+
+def test_employees_quarterly_warns_when_empty(employees_node_data: list[Any]) -> None:
+    """employees.history('quarterly') must warn when no data is available."""
+    with patch(
+        "stockanalysis.data.employees.fetch_data_json",
+        return_value=employees_node_data,
+    ):
+        e = Employees("AAPL")
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            df = e.history(period="quarterly")
+    assert isinstance(df, pd.DataFrame)
+    assert df.empty
+    assert any("quarterly" in str(w.message).lower() for w in caught)
+
+
+def test_employees_annual_no_warning(employees_node_data: list[Any]) -> None:
+    with patch(
+        "stockanalysis.data.employees.fetch_data_json",
+        return_value=employees_node_data,
+    ):
+        e = Employees("AAPL")
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            df = e.history(period="annual")
+    assert isinstance(df, pd.DataFrame)
+    assert not df.empty
+    assert not any("quarterly" in str(w.message).lower() for w in caught)
+
+
+# ---------------------------------------------------------------------------
+# Transcripts — graceful error handling (Bug #5)
+# ---------------------------------------------------------------------------
+
+
+def test_fetch_transcripts_returns_empty_on_api_error() -> None:
+    """Bug #5: fetch_transcripts must return empty DF when API returns error node."""
+    with patch(
+        "stockanalysis.data.transcripts.fetch_data_json",
+        side_effect=ValueError("API returned no data: not found"),
+    ):
+        df = fetch_transcripts("GOOG")
+    assert isinstance(df, pd.DataFrame)
+    assert df.empty
+
+
+# ---------------------------------------------------------------------------
+# ETF performance — reads main page, renames columns (Bug #1)
+# ---------------------------------------------------------------------------
+
+
+def test_etf_performance_columns_renamed(etf_main_node_data: list[Any]) -> None:
+    """Bug #1: fetch_etf_performance must use main ETF page and rename columns."""
+    with patch(
+        "stockanalysis.data.etf_overview.fetch_data_json",
+        return_value=etf_main_node_data,
+    ):
+        df = fetch_etf_performance("SPY")
+    assert isinstance(df, pd.DataFrame)
+    assert not df.empty
+    assert list(df.columns) == ["period", "return"]
+    periods = df["period"].tolist()
+    assert "1m" in periods
+    assert "YTD" in periods
+    assert "1y" in periods
+    assert "5y_cagr" in periods
+    assert "10y_cagr" in periods
+    assert "max_cagr" in periods
+
+
+def test_etf_performance_returns_empty_when_no_performance_key() -> None:
+    node_data: list[Any] = [{"description": 1}, "No performance data here."]
+    with patch(
+        "stockanalysis.data.etf_overview.fetch_data_json", return_value=node_data
+    ):
+        df = fetch_etf_performance("SPY")
+    assert isinstance(df, pd.DataFrame)
+    assert df.empty or list(df.columns) == ["period", "return"]
+
+
+# ---------------------------------------------------------------------------
+# History prices — adjusted_close and dividend columns (Gap #7)
+# ---------------------------------------------------------------------------
+
+
+def test_history_prices_has_adjusted_close_and_dividend(
+    history_node_data: list[Any],
+) -> None:
+    """Gap #7: prices() must expose adjusted_close and dividend columns."""
+    with patch(
+        "stockanalysis.data.history.fetch_data_json", return_value=history_node_data
+    ):
+        h = History("AAPL")
+        df = h.prices()
+    assert isinstance(df, pd.DataFrame)
+    assert "adjusted_close" in df.columns
+    assert "dividend" in df.columns
+    assert df["dividend"].iloc[1] == pytest.approx(0.24)
+
+
+def test_etf_history_prices_has_adjusted_close_and_dividend(
+    history_node_data: list[Any],
+) -> None:
+    """Gap #7: ETFHistory.prices() must also expose adjusted_close and dividend."""
+    with patch(
+        "stockanalysis.data.etf_history.fetch_data_json", return_value=history_node_data
+    ):
+        h = ETFHistory("SPY")
+        df = h.prices()
+    assert isinstance(df, pd.DataFrame)
+    assert "adjusted_close" in df.columns
+    assert "dividend" in df.columns

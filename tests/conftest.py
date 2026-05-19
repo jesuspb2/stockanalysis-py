@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 
 @pytest.fixture()
-def financial_node_data() -> list:
+def financial_node_data() -> list[Any]:
     """Minimal node_data for a financial statement endpoint."""
     return [
         {"financialData": 1},
@@ -18,7 +20,7 @@ def financial_node_data() -> list:
 
 
 @pytest.fixture()
-def metrics_node_data() -> list:
+def metrics_node_data() -> list[Any]:
     """Minimal node_data for financials/metrics endpoint."""
     return [
         {"financialData": 1},
@@ -34,7 +36,7 @@ def metrics_node_data() -> list:
 
 
 @pytest.fixture()
-def company_node_data() -> list:
+def company_node_data() -> list[Any]:
     """Minimal node_data for the company endpoint."""
     return [
         {"profile": 1, "description": 2, "executives": 3},
@@ -48,7 +50,7 @@ def company_node_data() -> list:
 
 
 @pytest.fixture()
-def forecast_node_data() -> list:
+def forecast_node_data() -> list[Any]:
     """Minimal node_data for the forecast endpoint."""
     return [
         {"estimates": 1, "priceTargets": 2, "recommendations": 3},
@@ -70,7 +72,7 @@ def forecast_node_data() -> list:
 
 
 @pytest.fixture()
-def statistics_node_data() -> list:
+def statistics_node_data() -> list[Any]:
     """Minimal node_data for the statistics endpoint."""
     return [
         {"valuation": 1, "shares": 2},
@@ -82,7 +84,7 @@ def statistics_node_data() -> list:
 
 
 @pytest.fixture()
-def segment_node_data() -> list:
+def segment_node_data() -> list[Any]:
     """Minimal node_data for a segment metrics endpoint (revenue-by-segment etc.)."""
     return [
         {"data": 1},
@@ -109,4 +111,74 @@ def segment_node_data() -> list:
                 ],
             },
         ],
+    ]
+
+
+@pytest.fixture()
+def etf_main_node_data() -> list[Any]:
+    """Minimal node_data for an ETF main page (includes performance key)."""
+    return [
+        {
+            "description": 1,
+            "expenseRatio": 2,
+            "performance": 3,
+        },
+        "SPDR S&P 500 ETF Trust tracks the S&P 500 index.",
+        0.0945,
+        {
+            "tr1m": 4.015,
+            "trYTD": 8.619,
+            "tr1y": 25.736,
+            "cagr5y": 13.745,
+            "cagr10y": 15.563,
+            "cagrMAX": 10.815,
+        },
+    ]
+
+
+@pytest.fixture()
+def history_node_data() -> list[Any]:
+    """Minimal node_data for a stock/ETF history endpoint with all columns."""
+    return [
+        {"data": 1},
+        {
+            "data": 2,
+        },
+        [
+            {
+                "t": "2024-01-02",
+                "o": 185.0,
+                "h": 186.5,
+                "l": 184.0,
+                "c": 185.8,
+                "v": 50000000,
+                "ch": 0.43,
+                "a": 184.9,
+                "div": 0.0,
+            },
+            {
+                "t": "2024-02-09",
+                "o": 188.0,
+                "h": 189.0,
+                "l": 187.0,
+                "c": 188.7,
+                "v": 45000000,
+                "ch": 0.21,
+                "a": 187.8,
+                "div": 0.24,
+            },
+        ],
+    ]
+
+
+@pytest.fixture()
+def employees_node_data() -> list[Any]:
+    """Minimal node_data for the employees endpoint (quarterly list is empty)."""
+    return [
+        {"historical_annual": 1, "historical_quarterly": 2},
+        [
+            {"date": "2024-09-28", "count": 150000, "change": -1000},
+            {"date": "2023-09-30", "count": 161000, "change": 5000},
+        ],
+        [],
     ]
