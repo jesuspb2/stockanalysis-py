@@ -30,7 +30,10 @@ class Dividend:
         amount, type, declaration date, record date, payment date.
         """
         node_data, meta = self._fetch()
-        rows = resolve(meta["history"], node_data)
+        history_ref = meta.get("history")
+        if history_ref is None:
+            return pd.DataFrame()
+        rows = resolve(history_ref, node_data)
 
         if not isinstance(rows, list):
             return pd.DataFrame()

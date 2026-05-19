@@ -361,6 +361,19 @@ def test_dividend_info_empty_fallback() -> None:
     assert isinstance(info, str)
 
 
+def test_dividend_history_missing_history_key() -> None:
+    """Bug #1: no-dividend stocks return meta without 'history' key → must not raise."""
+    node_data: list[Any] = [
+        {"infoBox": 1},
+        "No dividend history available.",
+    ]
+    with patch("stockanalysis.data.dividend.fetch_data_json", return_value=node_data):
+        d = Dividend("BRK.B")
+        df = d.history()
+    assert isinstance(df, pd.DataFrame)
+    assert df.empty
+
+
 def test_dividend_history_returns_empty_on_bad_data() -> None:
     node_data: list[Any] = [
         {"infoBox": 1, "history": 2},
