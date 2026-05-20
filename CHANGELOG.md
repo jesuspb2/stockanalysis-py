@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- `sa.screener()`: `country` and `exchange` parameters now work correctly — they post-filter results via the `/_api/endpoints/screener/data-point` endpoint (previously declared but silently ignored).
+  - `country` accepts full country names (e.g. `"United States"`, `"China"`).
+  - `exchange` accepts exchange codes (e.g. `"NYSE"`, `"NASDAQ"`, `"NYSEAMERICAN"`).
+
+### Added
+
+- `sa.screener()`: new `filters` parameter — a dict of `{key: (min, max)}` tuples for numeric range filtering. Supports 23 keys across valuation, growth, profitability, financial strength, and technicals:
+  - **Price & Volume**: `price`, `volume`, `change`, `avg_volume`, `beta`, `rsi`
+  - **Valuation**: `pe_ratio`, `pe_forward`, `pb_ratio`, `ps_ratio`, `peg_ratio`, `ev_ebitda`, `dividend_yield`
+  - **Growth**: `revenue_growth`, `eps_growth`, `price_change_1y`
+  - **Profitability**: `gross_margin`, `operating_margin`, `net_margin`, `roe`, `roic`
+  - **Financial Strength**: `debt_equity`, `current_ratio`
+
 ## [0.1.0] - 2026-05-18
 
 ### Added

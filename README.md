@@ -343,13 +343,13 @@ Filter stocks by fundamental criteria.
 | `market_cap_min` | `float` | Minimum market cap in USD (e.g. `10e9` for $10B) |
 | `market_cap_max` | `float` | Maximum market cap in USD |
 | `sector` | `str` | One of the 11 GICS sectors (see below) |
-| `country` | `str` | Country code (e.g. `"US"`, `"CN"`, `"GB"`) |
-| `exchange` | `str` | Exchange (e.g. `"NYSE"`, `"NASDAQ"`) |
-| `**extra_params` | `str` | Additional raw filter params passed directly to the endpoint |
+| `country` | `str` | Country name (e.g. `"United States"`, `"China"`, `"United Kingdom"`) |
+| `exchange` | `str` | Exchange name (e.g. `"NYSE"`, `"NASDAQ"`, `"NYSEAMERICAN"`) |
+| `filters` | `dict` | Numeric range filters as `{key: (min, max)}` — see below |
 
-Returns a `DataFrame` with columns: `symbol`, `name`, `marketCap`, `price`, `change`, `industry`, `peRatio`.
+Returns a `DataFrame` with columns: `symbol`, `name`, `marketCap`, `price`, `change`, `industry`, `volume`, `peRatio`.
 
-Valid sectors (11 GICS sectors):
+Valid sectors:
 
 ```
 "Communication Services"   "Consumer Discretionary"   "Consumer Staples"
@@ -358,10 +358,46 @@ Valid sectors (11 GICS sectors):
 "Technology"               "Utilities"
 ```
 
+Available `filters` keys:
+
+| Category | Keys |
+|---|---|
+| Price & Volume | `price`, `volume`, `change`, `avg_volume`, `beta`, `rsi` |
+| Valuation | `pe_ratio`, `pe_forward`, `pb_ratio`, `ps_ratio`, `peg_ratio`, `ev_ebitda`, `dividend_yield` |
+| Growth | `revenue_growth`, `eps_growth`, `price_change_1y` |
+| Profitability | `gross_margin`, `operating_margin`, `net_margin`, `roe`, `roic` |
+| Financial Strength | `debt_equity`, `current_ratio` |
+
 ```python
+# Basic filters
 sa.screener(sector="Technology", market_cap_min=10e9)
-sa.screener(sector="Healthcare", country="US", exchange="NYSE")
-sa.screener(market_cap_min=2e9, market_cap_max=10e9)
+sa.screener(country="China", market_cap_min=5e9)
+sa.screener(exchange="NYSE", market_cap_min=50e9)
+
+# Quality large-caps: strong returns, low debt
+sa.screener(
+    market_cap_min=5e9,
+    filters={
+        "roe": (15, None),
+        "gross_margin": (40, None),
+        "debt_equity": (None, 1),
+    },
+)
+
+# Dividend stocks: high yield, healthy balance sheet
+sa.screener(
+    market_cap_min=2e9,
+    filters={
+        "dividend_yield": (3, 10),
+        "current_ratio": (1, None),
+    },
+)
+
+# Oversold large-caps (RSI < 35)
+sa.screener(
+    market_cap_min=10e9,
+    filters={"rsi": (None, 35)},
+)
 ```
 
 ---
