@@ -5,6 +5,9 @@ from typing import Literal
 import pandas as pd
 
 from stockanalysis.core.http import fetch_data_json, resolve
+from stockanalysis.core.session import get_session
+
+_API_BASE = "https://stockanalysis.com/api/symbol/s"
 
 Frequency = Literal["daily", "weekly", "monthly", "quarterly", "annual"]
 
@@ -17,36 +20,21 @@ class History:
 
     def prices(self) -> pd.DataFrame:
         """
-        Daily OHLCV price history.
+        Full daily close price history (from IPO).
 
-        Returns a DataFrame indexed by date with columns:
-        open, high, low, close, volume, change (%).
+        Returns a DataFrame indexed by date with a single column: close.
         """
-        node_data = fetch_data_json(f"/stocks/{self._symbol}/history")
-        meta = node_data[0]
-        raw = resolve(meta["data"], node_data)
-        rows = resolve(raw.get("data", []), node_data)
+        url = f"{_API_BASE}/{self._symbol}/history"
+        resp = get_session().get(url, params={"type": "chart"}, timeout=15)
+        resp.raise_for_status()
+        rows = resp.json()["data"]
 
-        if not isinstance(rows, list):
-            return pd.DataFrame()
-
-        df = pd.DataFrame(rows)
-        df = df.rename(
-            columns={
-                "t": "date",
-                "o": "open",
-                "h": "high",
-                "l": "low",
-                "c": "close",
-                "v": "volume",
-                "ch": "change",
-                "a": "adjusted_close",
-                "div": "dividend",
-            }
-        )
+        df = pd.DataFrame(rows, columns=["date", "close"])
+        df["date"] = pd.to_datetime(df["date"], unit="ms")
         df = df.set_index("date")
-        df.index = pd.to_datetime(df.index)
+        df.index = df.index.normalize()
         df.index.name = "date"
+        df = df.sort_index(ascending=False)
         return df
 
     def market_cap(self, frequency: Frequency = "annual") -> pd.DataFrame:

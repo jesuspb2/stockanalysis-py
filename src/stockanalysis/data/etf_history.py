@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import pandas as pd
 
-from stockanalysis.core.http import fetch_data_json, resolve
+from stockanalysis.core.session import get_session
+
+_API_BASE = "https://stockanalysis.com/api/symbol/e"
 
 
 class ETFHistory:
@@ -12,27 +14,16 @@ class ETFHistory:
         self._symbol = symbol.lower()
 
     def prices(self) -> pd.DataFrame:
-        """Daily OHLCV price history."""
-        node_data = fetch_data_json(f"/etf/{self._symbol}/history")
-        meta = node_data[0]
-        raw = resolve(meta["data"], node_data)
-        rows = resolve(raw.get("data", []), node_data)
-        if not isinstance(rows, list):
-            return pd.DataFrame()
-        df = pd.DataFrame(rows)
-        df = df.rename(
-            columns={
-                "t": "date",
-                "o": "open",
-                "h": "high",
-                "l": "low",
-                "c": "close",
-                "v": "volume",
-                "ch": "change",
-                "a": "adjusted_close",
-                "div": "dividend",
-            }
-        )
-        if "date" in df.columns:
-            df = df.set_index("date")
+        """Full daily close price history (from inception)."""
+        url = f"{_API_BASE}/{self._symbol}/history"
+        resp = get_session().get(url, params={"type": "chart"}, timeout=15)
+        resp.raise_for_status()
+        rows = resp.json()["data"]
+
+        df = pd.DataFrame(rows, columns=["date", "close"])
+        df["date"] = pd.to_datetime(df["date"], unit="ms")
+        df = df.set_index("date")
+        df.index = df.index.normalize()
+        df.index.name = "date"
+        df = df.sort_index(ascending=False)
         return df
