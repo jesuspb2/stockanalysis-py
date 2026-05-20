@@ -21,9 +21,12 @@ class Financials:
 
     def _fetch(self, path_suffix: str, period: Period) -> pd.DataFrame:
         path = f"/stocks/{self._symbol}/{path_suffix}"
-        params = {} if period == "annual" else {"p": "quarterly"}
+        params = {"p": "quarterly"} if period == "quarterly" else {}
         node_data = fetch_data_json(path, params)
-        return extract_financial_df(node_data)
+        df = extract_financial_df(node_data)
+        if period == "annual":
+            df = df[df.index != "TTM"]
+        return df
 
     def income_statement(self, period: Period = "annual") -> pd.DataFrame:
         """Income statement (revenue, gross profit, net income, EPS, EBITDA…)."""
@@ -47,6 +50,9 @@ class Financials:
     def kpis(self, period: Period = "annual") -> pd.DataFrame:
         """Key financial KPIs by category (revenue, gross profit, margins…)."""
         path = f"/stocks/{self._symbol}/financials/metrics"
-        params = {} if period == "annual" else {"p": "quarterly"}
+        params = {"p": "quarterly"} if period == "quarterly" else {}
         node_data = fetch_data_json(path, params)
-        return extract_metrics_df(node_data)
+        df = extract_metrics_df(node_data)
+        if period == "annual":
+            df = df[df.index != "TTM"]
+        return df

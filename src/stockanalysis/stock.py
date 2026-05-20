@@ -73,8 +73,11 @@ class Stock:
     def ratios(self, period: Period = "annual") -> pd.DataFrame:
         """Key financial ratios (P/E, P/S, EV/EBITDA, margins…)."""
         path = f"/stocks/{self.symbol.lower()}/financials/ratios"
-        params = {} if period == "annual" else {"p": "quarterly"}
-        return extract_financial_df(fetch_data_json(path, params))
+        params = {"p": "quarterly"} if period == "quarterly" else {}
+        df = extract_financial_df(fetch_data_json(path, params))
+        if period == "annual":
+            df = df[df.index != "TTM"]
+        return df
 
     def statistics(self) -> pd.DataFrame:
         """All valuation and key stats as a flat DataFrame (section, id, title, value)."""
