@@ -48,7 +48,9 @@ def fetch_news(symbol: str) -> pd.DataFrame:
     if "time" in df.columns:
         # Strip trailing timezone abbreviation e.g. "Jun 8, 2026, 2:51 PM EDT"
         cleaned = df["time"].str.replace(r"\s+[A-Z]{2,4}$", "", regex=True)
-        df["time"] = pd.to_datetime(cleaned, format="%b %d, %Y, %I:%M %p", errors="coerce")
+        df["time"] = pd.to_datetime(
+            cleaned, format="%b %d, %Y, %I:%M %p", errors="coerce"
+        )
         df.sort_values("time", ascending=False, inplace=True)
         df.reset_index(drop=True, inplace=True)
     return df

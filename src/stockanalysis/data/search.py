@@ -121,7 +121,11 @@ def _fetch_datapoint_symbols(data_id: str, value: str) -> set[str]:
     )
     resp.raise_for_status()
     pairs = resp.json().get("data", {}).get("data", [])
-    return {sym for sym, val in pairs if isinstance(val, str) and val.lower() == value.lower()}
+    return {
+        sym
+        for sym, val in pairs
+        if isinstance(val, str) and val.lower() == value.lower()
+    }
 
 
 def _fetch_datapoint_numeric(data_id: str) -> dict[str, float]:
@@ -244,7 +248,8 @@ def screener(
             else:
                 values = _fetch_datapoint_numeric(_FILTER_ID_MAP[key])
                 syms = {
-                    s for s, v in values.items()
+                    s
+                    for s, v in values.items()
                     if (low is None or v >= low) and (high is None or v <= high)
                 }
                 df = df[df["symbol"].isin(syms)].reset_index(drop=True)

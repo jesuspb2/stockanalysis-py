@@ -36,7 +36,9 @@ class Forecasts:
         df.index.name = "period"
         if "analysts" in df.columns:
             df = df.rename(columns={"analysts": "no_analysts"})
-            df["no_analysts"] = pd.to_numeric(df["no_analysts"], errors="coerce").astype("Int64")
+            df["no_analysts"] = pd.to_numeric(
+                df["no_analysts"], errors="coerce"
+            ).astype("Int64")
         today = datetime.date.today().isoformat()
         df["is_estimate"] = [str(d) >= today for d in df.index]
         return df
