@@ -17,8 +17,9 @@ Pro account cookies are loaded automatically from `.auth/state.json`.
 
 ```
 src/stockanalysis/
-├── __init__.py            # sa.stock("AAPL") entry point
+├── __init__.py            # sa.stock(), sa.etf(), sa.search(), sa.screener(), sa.clear_cache()
 ├── stock.py               # Stock class — public API surface
+├── etf.py                 # ETF class — public API surface
 ├── auth.py                # CLI: stockanalysis-login (saves session to .auth/state.json)
 ├── core/
 │   ├── __init__.py        # re-exports get_session, fetch_data_json, resolve, extract_*
@@ -35,7 +36,12 @@ src/stockanalysis/
     ├── employees.py       # Employees class
     ├── metrics.py         # Metrics class (segment breakdowns)
     ├── overview.py        # fetch_overview()
-    └── transcripts.py     # fetch_transcripts()
+    ├── news.py            # fetch_news()
+    ├── transcripts.py     # fetch_transcripts(), fetch_transcript()
+    ├── search.py          # search(), screener()
+    ├── etf_history.py     # ETFHistory class
+    ├── etf_holdings.py    # ETFHoldings class
+    └── etf_overview.py    # fetch_etf_overview(), fetch_etf_sectors(), fetch_etf_performance()
 ```
 
 ### Key conventions
@@ -60,6 +66,7 @@ stock = sa.stock("AAPL")
 stock.financials.income_statement(period="annual")
 stock.financials.balance_sheet(period="quarterly")
 stock.financials.cash_flow()
+stock.financials.kpis(period="annual")       # KPIs by category (revenue, margins…) → DataFrame
 stock.ratios(period="annual")
 
 # Analyst forecasts
@@ -95,6 +102,33 @@ stock.metrics.gross_margin_by_type()
 stock.metrics.revenue_by_geography()
 stock.metrics.operating_expense_breakdown()
 stock.metrics.operating_metrics()            # annual device/user counts → DataFrame
+
+# News
+stock.news()                                 # recent news articles → DataFrame
+
+# Transcripts
+stock.transcripts()                          # list of earnings calls → DataFrame
+stock.transcript(transcript_id)             # full text + Q&A for one call → dict
+
+# ETF
+etf = sa.etf("SPY")
+etf.overview()                               # AUM, expense ratio, fund info → dict
+etf.holdings()                               # full holdings list → DataFrame
+etf.holdings(top=10)                         # top N holdings → DataFrame
+etf.sectors()                                # sector allocation → DataFrame
+etf.performance()                            # returns by period → DataFrame
+etf.history.prices()                         # daily close price history → DataFrame
+
+# Search & screener
+sa.search("Apple")                           # → list[dict] with symbol, name, type
+sa.screener(
+    sector="Technology",
+    market_cap_min=10e9,
+    filters={"pe_ratio": (None, 30), "revenue_growth": (5, None)},
+)                                            # → DataFrame
+
+# Utilities
+sa.clear_cache()                             # flush in-session HTTP cache
 ```
 
 ---
@@ -138,6 +172,7 @@ Tests hit the real network — no mocking. Run them to verify a new endpoint wor
 | `financials.income_statement()` | `/stocks/{symbol}/financials/` | ✅ |
 | `financials.balance_sheet()` | `/stocks/{symbol}/financials/balance-sheet/` | ✅ |
 | `financials.cash_flow()` | `/stocks/{symbol}/financials/cash-flow-statement/` | ✅ |
+| `financials.kpis()` | `/stocks/{symbol}/financials/metrics/` | ✅ |
 | `ratios()` | `/stocks/{symbol}/financials/ratios/` | ✅ |
 | `forecasts.estimates()` | `/stocks/{symbol}/forecast/` | ✅ |
 | `forecasts.revenue()` | `/stocks/{symbol}/forecast/` | ✅ |
@@ -153,15 +188,23 @@ Tests hit the real network — no mocking. Run them to verify a new endpoint wor
 | `dividend.info()` | `/stocks/{symbol}/dividend/` | ✅ |
 | `dividend.history()` | `/stocks/{symbol}/dividend/` | ✅ |
 | `employees.history()` | `/stocks/{symbol}/employees/` | ✅ |
-| `financials.metrics()` | `/stocks/{symbol}/financials/metrics/` | ✅ |
 | `overview()` | `/stocks/{symbol}/` | ✅ |
+| `news()` | `/stocks/{symbol}/` | ✅ |
 | `metrics.revenue_by_segment()` | `/stocks/{symbol}/metrics/revenue-by-segment/` | ✅ |
 | `metrics.gross_profit_by_type()` | `/stocks/{symbol}/metrics/gross-profit-by-type/` | ✅ |
 | `metrics.gross_margin_by_type()` | `/stocks/{symbol}/metrics/gross-margin-by-type/` | ✅ |
 | `metrics.revenue_by_geography()` | `/stocks/{symbol}/metrics/revenue-by-geography/` | ✅ |
 | `metrics.operating_expense_breakdown()` | `/stocks/{symbol}/metrics/operating-expense-breakdown/` | ✅ |
-| `transcripts()` | `/stocks/{symbol}/transcripts/` | ✅ |
 | `metrics.operating_metrics()` | `/stocks/{symbol}/metrics/` | ✅ |
+| `transcripts()` | `/stocks/{symbol}/transcripts/` | ✅ |
+| `transcript(id)` | `/stocks/{symbol}/transcripts/` | ✅ |
+| `sa.search(query)` | `/api/search` | ✅ |
+| `sa.screener(...)` | `/stocks/screener/` | ✅ |
+| `etf.overview()` | `/etf/{symbol}/` | ✅ |
+| `etf.holdings()` | `/etf/{symbol}/holdings/` | ✅ |
+| `etf.sectors()` | `/etf/{symbol}/holdings/` | ✅ |
+| `etf.performance()` | `/etf/{symbol}/` | ✅ |
+| `etf.history.prices()` | `stockanalysis.com/api/symbol/e/{symbol}/history` | ✅ |
 
 
 ---
@@ -188,7 +231,7 @@ These are the pages discovered on stockanalysis.com. All follow the pattern
 `https://stockanalysis.com/stocks/{symbol}/...` and expose a `__data.json` endpoint.
 
 ```
-# Main
+# Main (also serves news via node_data["news"])
 https://stockanalysis.com/stocks/aapl/
 
 # Financials
@@ -223,6 +266,16 @@ https://stockanalysis.com/stocks/aapl/employees/
 
 # Content
 https://stockanalysis.com/stocks/aapl/transcripts/
+
+# Search & screener
+https://stockanalysis.com/api/search?q=apple
+https://stockanalysis.com/stocks/screener/
+https://stockanalysis.com/_api/endpoints/screener/data-point?type=s&id=dividendYield
+
+# ETF
+https://stockanalysis.com/etf/spy/
+https://stockanalysis.com/etf/spy/holdings/
+https://stockanalysis.com/api/symbol/e/spy/history?type=chart
 ```
 
 ---
@@ -235,3 +288,4 @@ https://stockanalysis.com/stocks/aapl/transcripts/
 | `pandas` | DataFrames |
 | `python-dotenv` | Load `.env` credentials |
 | `playwright` | Login only (`stockanalysis-login` CLI) — optional extra `[auth]` |
+| `pytest-playwright` | Dev only — browser-based integration tests |
