@@ -14,6 +14,7 @@ from stockanalysis.data.history import History
 from stockanalysis.data.metrics import Metrics
 from stockanalysis.data.overview import fetch_overview
 from stockanalysis.data.statistics import Statistics
+from stockanalysis.data.news import fetch_news
 from stockanalysis.data.transcripts import fetch_transcript, fetch_transcripts
 
 Period = Literal["annual", "quarterly"]
@@ -86,6 +87,10 @@ class Stock:
     def overview(self) -> dict[str, Any]:
         """Summary data from the main stock page (price metrics, analyst rating, description…)."""
         return fetch_overview(self.symbol)
+
+    def news(self) -> pd.DataFrame:
+        """Recent news articles for the stock."""
+        return fetch_news(self.symbol)
 
     def transcripts(self) -> pd.DataFrame:
         """Earnings call transcript list with date, quarter, summary, and audio URL."""

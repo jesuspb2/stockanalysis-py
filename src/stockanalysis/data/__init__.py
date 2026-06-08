@@ -6,6 +6,7 @@ from stockanalysis.data.history import History
 from stockanalysis.data.dividend import Dividend
 from stockanalysis.data.employees import Employees
 from stockanalysis.data.metrics import Metrics
+from stockanalysis.data.news import fetch_news
 from stockanalysis.data.overview import fetch_overview
 from stockanalysis.data.transcripts import fetch_transcripts
 
@@ -18,6 +19,7 @@ __all__ = [
     "Dividend",
     "Employees",
     "Metrics",
+    "fetch_news",
     "fetch_overview",
     "fetch_transcripts",
 ]
