@@ -39,10 +39,11 @@ def metrics_node_data() -> list[Any]:
 def company_node_data() -> list[Any]:
     """Minimal node_data for the company endpoint."""
     return [
-        {"profile": 1, "description": 2, "executives": 3},
-        {"name": 4, "sector": 5, "industry": 6},
+        {"profile": 1, "description": 2, "executives": 3, "details": 4},
+        {"name": 5, "sector": 6, "industry": 7},
         "Apple Inc. designs, manufactures, and markets smartphones, personal computers, and more.",
         [{"Name": "Tim Cook", "Title": "CEO & Director"}],
+        {"isin": "US0378331005", "symbol": "AAPL"},
         "Apple Inc.",
         "Technology",
         "Consumer Electronics",

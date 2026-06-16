@@ -20,13 +20,20 @@ class Company:
     def profile(self) -> dict[str, Any]:
         """
         Core company information: name, sector, industry, country, CEO,
-        IPO date, founded year, employee count.
+        IPO date, founded year, employee count, and ISIN when available.
         """
         node_data, meta = self._fetch()
         raw = resolve(meta["profile"], node_data)
         flat: dict[str, Any] = {}
         for k, v in raw.items():
             flat[k] = v["value"] if isinstance(v, dict) and "value" in v else v
+
+        details_ref = meta.get("details")
+        if details_ref is not None:
+            details = resolve(details_ref, node_data)
+            if isinstance(details, dict) and details.get("isin"):
+                flat["isin"] = details["isin"]
+
         return flat
 
     def description(self) -> str:

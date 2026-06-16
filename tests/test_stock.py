@@ -106,6 +106,7 @@ def test_company_profile(aapl: sa.Stock) -> None:
     p = aapl.company.profile()
     assert isinstance(p, dict)
     assert "name" in p and p["name"] == "Apple Inc."
+    assert "isin" in p and p["isin"] == "US0378331005"
 
 
 def test_company_description(aapl: sa.Stock) -> None:

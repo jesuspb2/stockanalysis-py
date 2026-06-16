@@ -193,6 +193,7 @@ def test_company_profile_parsing(company_node_data: list[Any]) -> None:
     assert isinstance(profile, dict)
     assert profile["name"] == "Apple Inc."
     assert profile["sector"] == "Technology"
+    assert profile["isin"] == "US0378331005"
 
 
 def test_company_description_parsing(company_node_data: list[Any]) -> None:
