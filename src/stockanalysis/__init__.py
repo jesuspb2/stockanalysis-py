@@ -1,4 +1,5 @@
 from stockanalysis.core.http import clear_cache
+from stockanalysis.data.news import fetch_market_news
 from stockanalysis.data.search import screener, search
 from stockanalysis.etf import ETF
 from stockanalysis.stock import Stock
@@ -41,4 +42,21 @@ def etf(symbol: str) -> ETF:
     return ETF(symbol)
 
 
-__all__ = ["stock", "Stock", "etf", "ETF", "search", "screener", "clear_cache"]
+def news(category: str = "markets"):
+    """General stock market news feed.
+
+    Args:
+        category: "markets" (default), "all-stocks", or "press-releases".
+
+    Returns a DataFrame with columns:
+        time, ago, title, text, source, type, tickers, url, img
+
+    Usage:
+        sa.news()                    # market headlines
+        sa.news("all-stocks")        # all stock-specific news
+        sa.news("press-releases")    # press releases
+    """
+    return fetch_market_news(category)
+
+
+__all__ = ["stock", "Stock", "etf", "ETF", "news", "search", "screener", "clear_cache"]
