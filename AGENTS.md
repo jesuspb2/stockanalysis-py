@@ -17,7 +17,7 @@ Pro account cookies are loaded automatically from `.auth/state.json`.
 
 ```
 src/stockanalysis/
-├── __init__.py            # sa.stock(), sa.etf(), sa.search(), sa.screener(), sa.clear_cache()
+├── __init__.py            # sa.stock(), sa.etf(), sa.search(), sa.screener(), sa.news(), sa.clear_cache()
 ├── stock.py               # Stock class — public API surface
 ├── etf.py                 # ETF class — public API surface
 ├── auth.py                # CLI: stockanalysis-login (saves session to .auth/state.json)
@@ -36,7 +36,7 @@ src/stockanalysis/
     ├── employees.py       # Employees class
     ├── metrics.py         # Metrics class (segment breakdowns)
     ├── overview.py        # fetch_overview()
-    ├── news.py            # fetch_news()
+    ├── news.py            # fetch_news(), fetch_market_news()
     ├── transcripts.py     # fetch_transcripts(), fetch_transcript()
     ├── search.py          # search(), screener()
     ├── etf_history.py     # ETFHistory class
@@ -127,6 +127,11 @@ sa.screener(
     filters={"pe_ratio": (None, 30), "revenue_growth": (5, None)},
 )                                            # → DataFrame
 
+# General market news
+sa.news()                                    # market headlines → DataFrame
+sa.news("all-stocks")                        # all stock-specific news → DataFrame
+sa.news("press-releases")                    # press releases → DataFrame
+
 # Utilities
 sa.clear_cache()                             # flush in-session HTTP cache
 ```
@@ -200,6 +205,9 @@ Tests hit the real network — no mocking. Run them to verify a new endpoint wor
 | `transcript(id)` | `/stocks/{symbol}/transcripts/` | ✅ |
 | `sa.search(query)` | `/api/search` | ✅ |
 | `sa.screener(...)` | `/stocks/screener/` | ✅ |
+| `sa.news()` | `/news/` | ✅ |
+| `sa.news("all-stocks")` | `/news/all-stocks/` | ✅ |
+| `sa.news("press-releases")` | `/news/press-releases/` | ✅ |
 | `etf.overview()` | `/etf/{symbol}/` | ✅ |
 | `etf.holdings()` | `/etf/{symbol}/holdings/` | ✅ |
 | `etf.sectors()` | `/etf/{symbol}/holdings/` | ✅ |
@@ -276,6 +284,11 @@ https://stockanalysis.com/_api/endpoints/screener/data-point?type=s&id=dividendY
 https://stockanalysis.com/etf/spy/
 https://stockanalysis.com/etf/spy/holdings/
 https://stockanalysis.com/api/symbol/e/spy/history?type=chart
+
+# General market news
+https://stockanalysis.com/news/
+https://stockanalysis.com/news/all-stocks/
+https://stockanalysis.com/news/press-releases/
 ```
 
 ---
