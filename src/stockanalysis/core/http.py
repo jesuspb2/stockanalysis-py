@@ -133,7 +133,21 @@ def extract_financial_df(
 ) -> pd.DataFrame:
     """Extract a financial DataFrame from node_data using SvelteKit dedup encoding."""
     meta = node_data[0]
-    fd_refs = node_data[meta[key]]
+    ref = meta.get(key)
+    # -1 is the dedup encoding's "undefined". Indexing node_data with it silently
+    # returns the last node, and the failure surfaces much later as an opaque
+    # AttributeError on whatever that node happened to be.
+    if not isinstance(ref, int) or ref < 0:
+        raise ValueError(
+            f"No {key!r} on this page (meta[{key!r}]={ref!r}). "
+            f"Available meta keys: {sorted(meta)}"
+        )
+    fd_refs = node_data[ref]
+    if not isinstance(fd_refs, dict):
+        raise ValueError(
+            f"Expected a dict at node_data[{ref}] for {key!r}, "
+            f"got {type(fd_refs).__name__}. The page layout has probably changed."
+        )
     resolved = {k: resolve(v, node_data) for k, v in fd_refs.items()}
     dates = resolved.pop("datekey", [])
     df = pd.DataFrame(resolved, index=dates)

@@ -30,7 +30,11 @@ class Financials:
 
     def income_statement(self, period: Period = "annual") -> pd.DataFrame:
         """Income statement (revenue, gross profit, net income, EPS, EBITDA…)."""
-        df = self._fetch("financials", period)
+        # `/financials` used to serve the income statement. It is now a summary page
+        # built from `sections` with no top-level `financialData`, so the income
+        # statement lives at its own path. The dedicated path also returns more
+        # columns than the old one (ebitda, rnd, sharesBasic…).
+        df = self._fetch("financials/income-statement", period)
         return df.rename(
             columns={
                 "cor": "cost_of_revenue",
